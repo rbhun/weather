@@ -6,7 +6,13 @@ const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
 const GITHUB_REPO = 'your-username/weather'; // Replace with your actual GitHub repo
 const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const CURRENT_VERSION = '1.0.0'; // Current version of the app
-const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
+const DEFAULT_UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
+
+// Auto-update state
+let updateCheckInterval = null;
+let customTimeInterval = null;
+let isAutoUpdateEnabled = true;
+let updateCheckIntervalMs = DEFAULT_UPDATE_CHECK_INTERVAL;
 
 // Weather models to fetch data for (using the correct model names from the commercial API)
 const WEATHER_MODELS = [
@@ -55,6 +61,16 @@ const locationSelect = document.getElementById('locationSelect');
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing application...');
+    
+    // Debug: Check if DOM elements exist
+    console.log('Loading element:', document.getElementById('loading'));
+    console.log('Dashboard element:', document.getElementById('dashboard'));
+    console.log('Error element:', document.getElementById('error'));
+    console.log('Location select element:', document.getElementById('locationSelect'));
+    console.log('Auto-update settings element:', document.querySelector('.auto-update-settings'));
+    console.log('Auto-update enabled checkbox:', document.getElementById('autoUpdateEnabled'));
+    
     loadWeatherData();
     
     // Event listeners
@@ -489,7 +505,7 @@ async function checkForUpdates() {
         const lastCheck = localStorage.getItem('lastUpdateCheck');
         const now = Date.now();
         
-        if (lastCheck && (now - parseInt(lastCheck)) < UPDATE_CHECK_INTERVAL) {
+        if (lastCheck && (now - parseInt(lastCheck)) < updateCheckIntervalMs) {
             console.log('Update check skipped - too recent');
             return;
         }
@@ -516,6 +532,9 @@ async function checkForUpdates() {
         
         // Store the check time
         localStorage.setItem('lastUpdateCheck', now.toString());
+        
+        // Update status display
+        updateStatusDisplay();
         
     } catch (error) {
         console.error('Error checking for updates:', error);
@@ -681,6 +700,9 @@ async function applyUpdate() {
         // Update version in localStorage
         localStorage.setItem('appVersion', pendingUpdate.version);
         
+        // Save update time
+        localStorage.setItem('lastUpdateTime', Date.now().toString());
+        
         // Clear pending update
         localStorage.removeItem('pendingUpdate');
         
@@ -696,6 +718,9 @@ async function applyUpdate() {
         `;
         
         console.log('Update applied successfully');
+        
+        // Update status display
+        updateStatusDisplay();
         
     } catch (error) {
         console.error('Error applying update:', error);
@@ -733,11 +758,252 @@ async function initializeAutoUpdate() {
         }
     }
     
-    // Check for updates on page load
-    checkForUpdates();
+    // Load settings from localStorage
+    loadAutoUpdateSettings();
     
-    // Set up periodic update checks
-    setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+    // Initialize settings UI
+    initializeSettingsUI();
+    
+    // Check for updates on page load if enabled
+    if (isAutoUpdateEnabled) {
+        checkForUpdates();
+    }
+    
+    // Set up periodic update checks if enabled
+    if (isAutoUpdateEnabled) {
+        startUpdateChecks();
+    }
+    
+    // Update status display
+    updateStatusDisplay();
     
     console.log('Auto-update system initialized');
+}
+
+// Settings Management Functions
+function loadAutoUpdateSettings() {
+    // Load settings from localStorage
+    isAutoUpdateEnabled = localStorage.getItem('autoUpdateEnabled') !== 'false';
+    updateCheckIntervalMs = parseInt(localStorage.getItem('updateCheckInterval')) || DEFAULT_UPDATE_CHECK_INTERVAL;
+    
+    // Update UI to reflect loaded settings
+    const checkbox = document.getElementById('autoUpdateEnabled');
+    const intervalSelect = document.getElementById('updateInterval');
+    
+    if (checkbox) checkbox.checked = isAutoUpdateEnabled;
+    if (intervalSelect) {
+        intervalSelect.value = updateCheckIntervalMs.toString();
+        if (updateCheckIntervalMs === 0) {
+            intervalSelect.value = 'custom';
+            showCustomTimeInput();
+        }
+    }
+}
+
+function saveAutoUpdateSettings() {
+    localStorage.setItem('autoUpdateEnabled', isAutoUpdateEnabled.toString());
+    localStorage.setItem('updateCheckInterval', updateCheckIntervalMs.toString());
+}
+
+function initializeSettingsUI() {
+    console.log('Initializing settings UI...');
+    
+    const checkbox = document.getElementById('autoUpdateEnabled');
+    const intervalSelect = document.getElementById('updateInterval');
+    const customTimeInput = document.getElementById('customTime');
+    
+    console.log('Found checkbox:', checkbox);
+    console.log('Found interval select:', intervalSelect);
+    console.log('Found custom time input:', customTimeInput);
+    
+    if (checkbox) {
+        checkbox.addEventListener('change', function() {
+            console.log('Checkbox changed, new value:', this.checked);
+            isAutoUpdateEnabled = this.checked;
+            saveAutoUpdateSettings();
+            
+            if (isAutoUpdateEnabled) {
+                startUpdateChecks();
+            } else {
+                stopUpdateChecks();
+            }
+            
+            updateStatusDisplay();
+        });
+    }
+    
+    if (intervalSelect) {
+        intervalSelect.addEventListener('change', function() {
+            console.log('Interval select changed, new value:', this.value);
+            const value = this.value;
+            
+            if (value === 'custom') {
+                showCustomTimeInput();
+                updateCheckIntervalMs = 0; // Custom time mode
+            } else {
+                hideCustomTimeInput();
+                updateCheckIntervalMs = parseInt(value);
+            }
+            
+            saveAutoUpdateSettings();
+            
+            if (isAutoUpdateEnabled) {
+                stopUpdateChecks();
+                startUpdateChecks();
+            }
+            
+            updateStatusDisplay();
+        });
+    }
+    
+    if (customTimeInput) {
+        customTimeInput.addEventListener('change', function() {
+            console.log('Custom time changed, new value:', this.value);
+            localStorage.setItem('customUpdateTime', this.value);
+            if (isAutoUpdateEnabled) {
+                stopUpdateChecks();
+                startUpdateChecks();
+            }
+        });
+    }
+    
+    console.log('Settings UI initialization complete');
+}
+
+function showCustomTimeInput() {
+    const customTimeDiv = document.querySelector('.custom-time');
+    if (customTimeDiv) {
+        customTimeDiv.classList.add('show');
+    }
+}
+
+function hideCustomTimeInput() {
+    const customTimeDiv = document.querySelector('.custom-time');
+    if (customTimeDiv) {
+        customTimeDiv.classList.remove('show');
+    }
+}
+
+function startUpdateChecks() {
+    stopUpdateChecks(); // Clear any existing intervals
+    
+    if (updateCheckIntervalMs === 0) {
+        // Custom time mode
+        startCustomTimeChecks();
+    } else {
+        // Regular interval mode
+        updateCheckInterval = setInterval(checkForUpdates, updateCheckIntervalMs);
+    }
+}
+
+function stopUpdateChecks() {
+    if (updateCheckInterval) {
+        clearInterval(updateCheckInterval);
+        updateCheckInterval = null;
+    }
+    
+    if (customTimeInterval) {
+        clearInterval(customTimeInterval);
+        customTimeInterval = null;
+    }
+}
+
+function startCustomTimeChecks() {
+    const customTime = localStorage.getItem('customUpdateTime') || '02:00';
+    const [hours, minutes] = customTime.split(':').map(Number);
+    
+    function checkCustomTime() {
+        const now = new Date();
+        const targetTime = new Date();
+        targetTime.setHours(hours, minutes, 0, 0);
+        
+        // If target time has passed today, schedule for tomorrow
+        if (now > targetTime) {
+            targetTime.setDate(targetTime.getDate() + 1);
+        }
+        
+        const timeUntilNext = targetTime.getTime() - now.getTime();
+        
+        setTimeout(() => {
+            checkForUpdates();
+            startCustomTimeChecks(); // Schedule next check
+        }, timeUntilNext);
+    }
+    
+    checkCustomTime();
+}
+
+function checkForUpdatesNow() {
+    console.log('Manual update check requested');
+    checkForUpdates();
+}
+
+function updateStatusDisplay() {
+    console.log('Updating status display...');
+    
+    const lastCheckTime = localStorage.getItem('lastUpdateCheck');
+    const lastUpdateTime = localStorage.getItem('lastUpdateTime');
+    const currentVersionEl = document.getElementById('currentVersion');
+    const lastCheckTimeEl = document.getElementById('lastCheckTime');
+    const lastUpdateTimeEl = document.getElementById('lastUpdateTime');
+    const nextCheckTimeEl = document.getElementById('nextCheckTime');
+    
+    console.log('Status elements found:', {
+        currentVersion: currentVersionEl,
+        lastCheckTime: lastCheckTimeEl,
+        lastUpdateTime: lastUpdateTimeEl,
+        nextCheckTime: nextCheckTimeEl
+    });
+    
+    // Update current version
+    if (currentVersionEl) {
+        currentVersionEl.textContent = CURRENT_VERSION;
+    }
+    
+    // Update last check time
+    if (lastCheckTimeEl) {
+        if (lastCheckTime) {
+            const date = new Date(parseInt(lastCheckTime));
+            lastCheckTimeEl.textContent = date.toLocaleString();
+        } else {
+            lastCheckTimeEl.textContent = 'Never';
+        }
+    }
+    
+    // Update last update time
+    if (lastUpdateTimeEl) {
+        if (lastUpdateTime) {
+            const date = new Date(parseInt(lastUpdateTime));
+            lastUpdateTimeEl.textContent = date.toLocaleString();
+        } else {
+            lastUpdateTimeEl.textContent = 'Never';
+        }
+    }
+    
+    // Calculate and display next check time
+    if (nextCheckTimeEl) {
+        if (!isAutoUpdateEnabled) {
+            nextCheckTimeEl.textContent = 'Disabled';
+        } else if (updateCheckIntervalMs === 0) {
+            // Custom time mode
+            const customTime = localStorage.getItem('customUpdateTime') || '02:00';
+            const [hours, minutes] = customTime.split(':').map(Number);
+            const now = new Date();
+            const targetTime = new Date();
+            targetTime.setHours(hours, minutes, 0, 0);
+            
+            if (now > targetTime) {
+                targetTime.setDate(targetTime.getDate() + 1);
+            }
+            
+            nextCheckTimeEl.textContent = targetTime.toLocaleString();
+        } else {
+            // Regular interval mode
+            const lastCheck = parseInt(localStorage.getItem('lastUpdateCheck')) || Date.now();
+            const nextCheck = new Date(lastCheck + updateCheckIntervalMs);
+            nextCheckTimeEl.textContent = nextCheck.toLocaleString();
+        }
+    }
+    
+    console.log('Status display update complete');
 } 

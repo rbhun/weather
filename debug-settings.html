@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Auto-Update Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .auto-update-settings {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 3px solid red;
+        }
+        .settings-container {
+            display: grid;
+            gap: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #2c3e50;
+            user-select: none;
+        }
+        .checkbox-label input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        .checkmark {
+            height: 20px;
+            width: 20px;
+            background-color: #eee;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .checkbox-label input:checked ~ .checkmark {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 6px;
+            top: 2px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-label input:checked ~ .checkmark:after {
+            display: block;
+        }
+        .status-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Auto-Update Settings</h1>
+    
+    <!-- Auto-Update Settings Section -->
+    <div class="auto-update-settings">
+        <h3>🔄 Auto-Update Settings</h3>
+        <div class="settings-container">
+            <div class="setting-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="autoUpdateEnabled" checked>
+                    <span class="checkmark"></span>
+                    Enable Auto-Updates
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label for="updateInterval">Check for updates:</label>
+                <select id="updateInterval">
+                    <option value="60000">Every minute</option>
+                    <option value="300000">Every 5 minutes</option>
+                    <option value="900000">Every 15 minutes</option>
+                    <option value="3600000">Every hour</option>
+                    <option value="86400000" selected>Every day</option>
+                    <option value="604800000">Every week</option>
+                    <option value="custom">Custom time (2 AM daily)</option>
+                </select>
+            </div>
+            
+            <div class="setting-group custom-time" style="display: none;">
+                <label for="customTime">Custom check time:</label>
+                <input type="time" id="customTime" value="02:00">
+            </div>
+            
+            <div class="setting-group">
+                <button onclick="checkForUpdatesNow()" class="check-now-btn">Check for Updates Now</button>
+            </div>
+            
+            <div class="status-info">
+                <div class="status-item">
+                    <span class="status-label">Last Check:</span>
+                    <span id="lastCheckTime">Never</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Update:</span>
+                    <span id="lastUpdateTime">Never</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Current Version:</span>
+                    <span id="currentVersion">1.0.0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Next Check:</span>
+                    <span id="nextCheckTime">Calculating...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple test functions
+        function checkForUpdatesNow() {
+            alert('Check for updates clicked!');
+            console.log('Manual update check requested');
+        }
+        
+        // Initialize settings UI
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Debug page loaded');
+            
+            const checkbox = document.getElementById('autoUpdateEnabled');
+            const intervalSelect = document.getElementById('updateInterval');
+            
+            console.log('Found checkbox:', checkbox);
+            console.log('Found interval select:', intervalSelect);
+            
+            if (checkbox) {
+                checkbox.addEventListener('change', function() {
+                    console.log('Checkbox changed:', this.checked);
+                });
+            }
+            
+            if (intervalSelect) {
+                intervalSelect.addEventListener('change', function() {
+                    console.log('Interval changed:', this.value);
+                    if (this.value === 'custom') {
+                        document.querySelector('.custom-time').style.display = 'flex';
+                    } else {
+                        document.querySelector('.custom-time').style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 
