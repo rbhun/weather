@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Model Comparison Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Weather Model Comparison Dashboard</h1>
+            <div class="location-selector">
+                <label for="locationSelect">Select Location:</label>
+                <select id="locationSelect">
+                    <option value="47.4979,19.0402">Origo Studios, Hungary</option>
+                </select>
+                
+                <div class="add-location">
+                    <input type="text" id="newLocationInput" placeholder="Add location (lat,lon)" class="location-input">
+                    <input type="text" id="newLocationName" placeholder="Location name" class="location-input">
+                    <button onclick="addLocation()" class="add-btn">Add</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Loading weather data...</p>
+        </div>
+
+        <div class="dashboard" id="dashboard" style="display: none;">
+            <div class="chart-container">
+                <div class="chart-section">
+                    <h2>Temperature (°C)</h2>
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation (mm)</h2>
+                    <canvas id="precipitationChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation Probability (%)</h2>
+                    <canvas id="precipitationProbChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Cloud Cover (%)</h2>
+                    <canvas id="cloudCoverChart"></canvas>
+                </div>
+            </div>
+
+            <div class="model-legend">
+                <h3>Weather Models Legend</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #FF6B6B;"></span>
+                        <span>ICON Seamless</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #4ECDC4;"></span>
+                        <span>ECMWF IFS025</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #45B7D1;"></span>
+                        <span>GFS GraphCast025</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #96CEB4;"></span>
+                        <span>MeteoFrance Arpege</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #FFEAA7;"></span>
+                        <span>MeteoFrance Arome</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: #DDA0DD;"></span>
+                        <span>MetNo Seamless</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="error" id="error" style="display: none;">
+            <p>Error loading weather data. Please try again.</p>
+        </div>
+
+        <!-- Auto-Update Settings Section -->
+        <div class="auto-update-settings">
+            <h3>🔄 Auto-Update Settings</h3>
+            <div class="settings-container">
+                <div class="setting-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoUpdateEnabled" checked>
+                        <span class="checkmark"></span>
+                        Enable Auto-Updates
+                    </label>
+                </div>
+                
+                <div class="setting-group">
+                    <label for="updateInterval">Check for updates:</label>
+                    <select id="updateInterval">
+                        <option value="60000">Every minute</option>
+                        <option value="300000">Every 5 minutes</option>
+                        <option value="900000">Every 15 minutes</option>
+                        <option value="3600000">Every hour</option>
+                        <option value="86400000" selected>Every day</option>
+                        <option value="604800000">Every week</option>
+                        <option value="custom">Custom time (2 AM daily)</option>
+                    </select>
+                </div>
+                
+                <div class="setting-group custom-time" style="display: none;">
+                    <label for="customTime">Custom check time:</label>
+                    <input type="time" id="customTime" value="02:00">
+                </div>
+                
+                <div class="setting-group">
+                    <button onclick="checkForUpdatesNow()" class="check-now-btn">Check for Updates Now</button>
+                </div>
+                
+                <div class="status-info">
+                    <div class="status-item">
+                        <span class="status-label">Last Check:</span>
+                        <span id="lastCheckTime">Never</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Last Update:</span>
+                        <span id="lastUpdateTime">Never</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Current Version:</span>
+                        <span id="currentVersion">1.0.0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Next Check:</span>
+                        <span id="nextCheckTime">Calculating...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
