@@ -1,112 +1,169 @@
 # Weather Model Comparison Dashboard
 
-A modern, interactive web application that compares weather forecasts from 6 different weather models using the Open-Meteo API.
+A comprehensive weather dashboard that compares multiple weather models with automatic update functionality.
 
 ## Features
 
-- **Multi-Model Comparison**: Displays weather data from 6 different weather models:
-  - GFS (Global Forecast System)
-  - ICON (Icosahedral Nonhydrostatic)
-  - ECMWF (European Centre for Medium-Range Weather Forecasts)
-  - GEM (Global Environmental Multiscale)
-  - JMA (Japan Meteorological Agency)
-  - METEOFRANCE
+- **Multi-Model Weather Comparison**: Compare forecasts from 6 different weather models
+- **Real-time Data**: Fetches live weather data from Open-Meteo API
+- **Interactive Charts**: Beautiful, responsive charts using Chart.js
+- **Auto-Update System**: Automatically checks for and applies updates from GitHub releases
+- **PWA Support**: Can be installed as a Progressive Web App
+- **Offline Capability**: Service worker caches resources for offline use
 
-- **Weather Variables**: Shows 4 key weather parameters:
-  - Temperature (°C)
-  - Precipitation (mm)
-  - Precipitation Probability (%)
-  - Cloud Cover (%)
+## Weather Models
 
-- **7-Day Forecast**: Displays hourly data for the next 7 days
+The dashboard compares forecasts from these weather models:
+- **ICON Seamless** - German Weather Service
+- **ECMWF IFS025** - European Centre for Medium-Range Weather Forecasts
+- **GFS GraphCast025** - NOAA Global Forecast System
+- **MeteoFrance Arpege** - French Weather Service (Global)
+- **MeteoFrance Arome** - French Weather Service (Regional)
+- **MetNo Seamless** - Norwegian Meteorological Institute
 
-- **Interactive Charts**: Beautiful, responsive charts using Chart.js with:
-  - Hover tooltips showing exact values
-  - Smooth animations
-  - Color-coded model lines
-  - Responsive design
+## Auto-Update System
 
-- **Location Selection**: Currently includes Origo Studios in Hungary (easily expandable)
+The application includes an advanced auto-update system that:
 
-## How to Use
+1. **Checks for Updates**: Automatically checks GitHub releases every 24 hours
+2. **Downloads Updates**: Downloads new files from GitHub releases
+3. **Applies Updates**: Seamlessly applies updates without page reload
+4. **User Notifications**: Shows update notifications with progress indicators
 
-1. **Open the Application**: Simply open `index.html` in your web browser
-2. **Select Location**: Choose from the dropdown menu (currently Origo Studios, Hungary)
-3. **View Charts**: The dashboard will automatically load and display 4 charts:
-   - Temperature comparison across all models
-   - Precipitation amounts
-   - Precipitation probability
-   - Cloud cover percentage
-4. **Compare Models**: Each line on the charts represents a different weather model
-5. **Refresh Data**: Click the "Refresh Data" button to reload current weather data
+### Setting Up Auto-Updates
 
-## Technical Details
+To enable auto-updates, you need to:
 
-### API Integration
-- Uses Open-Meteo API (https://open-meteo.com/)
-- API Key: YrVIS5JatcuWWbN5
-- Fetches hourly data for 7 days
-- Supports multiple weather models in a single request
+1. **Update GitHub Repository**: Modify the `GITHUB_REPO` constant in `script.js`:
+   ```javascript
+   const GITHUB_REPO = 'your-username/your-repo-name';
+   ```
 
-### Technologies Used
-- **HTML5**: Semantic structure
-- **CSS3**: Modern styling with gradients, animations, and responsive design
-- **JavaScript (ES6+)**: Async/await for API calls, Chart.js for visualizations
-- **Chart.js**: Professional chart library for data visualization
+2. **Create GitHub Releases**: When you want to release an update:
+   - Create a new release on GitHub
+   - Tag it with a version (e.g., `v1.0.1`)
+   - Upload the updated files as release assets:
+     - `script.js`
+     - `styles.css`
+     - `index.html`
+     - `sw.js` (if updated)
 
-### Data Processing
-- Fetches data for all 6 models simultaneously
-- Processes and normalizes data for consistent display
-- Handles timezone conversion automatically
-- Provides error handling for API failures
+3. **Version Management**: Update the `CURRENT_VERSION` constant in `script.js` to match your release version.
+
+### How Auto-Updates Work
+
+1. **Check Process**: The app checks GitHub API for the latest release
+2. **Version Comparison**: Compares current version with latest release version
+3. **Download**: Downloads new files from the release assets
+4. **Apply**: Replaces old files with new ones in the browser
+5. **Cache Update**: Updates service worker cache with new files
+
+## Installation
+
+### Local Development
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/weather.git
+   cd weather
+   ```
+
+2. Serve the files using a local server:
+   ```bash
+   # Using Python
+   python -m http.server 8000
+   
+   # Using Node.js
+   npx serve .
+   
+   # Using PHP
+   php -S localhost:8000
+   ```
+
+3. Open `http://localhost:8000` in your browser
+
+### Production Deployment
+
+1. Upload all files to your web server
+2. Ensure HTTPS is enabled (required for service workers)
+3. Update the GitHub repository configuration in `script.js`
+
+## Configuration
+
+### API Configuration
+
+The app uses the Open-Meteo API. Update the API key in `script.js`:
+```javascript
+const API_KEY = 'your-api-key-here';
+```
+
+### Update Configuration
+
+Modify these constants in `script.js`:
+```javascript
+const GITHUB_REPO = 'your-username/your-repo-name';
+const CURRENT_VERSION = '1.0.0';
+const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+```
 
 ## File Structure
 
 ```
 weather/
-├── index.html          # Main HTML file
-├── styles.css          # CSS styles and responsive design
-├── script.js           # JavaScript logic and API integration
-└── README.md          # This file
+├── index.html          # Main application file
+├── script.js           # Application logic and auto-update system
+├── styles.css          # Application styles
+├── sw.js              # Service worker for caching and updates
+├── manifest.json       # PWA manifest
+├── README.md          # This file
+└── .gitignore         # Git ignore file
 ```
 
-## Adding New Locations
+## Browser Support
 
-To add more locations, edit the `locationSelect` element in `index.html`:
+- Chrome 40+
+- Firefox 44+
+- Safari 11.1+
+- Edge 17+
 
-```html
-<select id="locationSelect">
-    <option value="47.4979,19.0402">Origo Studios, Hungary</option>
-    <option value="40.7128,-74.0060">New York, USA</option>
-    <option value="51.5074,-0.1278">London, UK</option>
-</select>
-```
+## Service Worker
 
-The format is `latitude,longitude` for the value attribute.
+The service worker (`sw.js`) provides:
+- **Caching**: Caches app resources for offline use
+- **Update Management**: Handles file updates and cache invalidation
+- **Background Sync**: Enables background update checks
 
-## Browser Compatibility
+## Troubleshooting
 
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
+### Auto-Update Issues
 
-## Performance Features
+1. **Check GitHub Repository**: Ensure the repository URL is correct
+2. **Verify Releases**: Make sure releases are properly tagged
+3. **Check Console**: Look for error messages in browser console
+4. **Clear Cache**: Clear browser cache if updates aren't applying
 
-- Lazy loading of chart data
-- Efficient API calls with Promise.all()
-- Responsive design for mobile devices
-- Smooth animations and transitions
-- Error handling and loading states
+### API Issues
 
-## Future Enhancements
+1. **Check API Key**: Verify your Open-Meteo API key is valid
+2. **Rate Limits**: Check if you've exceeded API rate limits
+3. **Network**: Ensure internet connection is stable
 
-- Add more locations
-- Include additional weather variables (wind, humidity, etc.)
-- Add data export functionality
-- Implement historical data comparison
-- Add weather alerts and notifications
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-This project is open source and available under the MIT License. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Changelog
+
+### Version 1.0.0
+- Initial release with weather model comparison
+- Auto-update system implementation
+- PWA support
+- Service worker for offline functionality 

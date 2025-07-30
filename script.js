@@ -2,6 +2,12 @@
 const API_KEY = 'YrVIS5JatcuWWbN5';
 const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
 
+// Auto-update configuration
+const GITHUB_REPO = 'your-username/weather'; // Replace with your actual GitHub repo
+const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+const CURRENT_VERSION = '1.0.0'; // Current version of the app
+const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
+
 // Weather models to fetch data for (using the correct model names from the commercial API)
 const WEATHER_MODELS = [
     'icon_seamless',
@@ -53,6 +59,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event listeners
     locationSelect.addEventListener('change', loadWeatherData);
+    
+    // Initialize auto-update system
+    initializeAutoUpdate();
 });
 
 async function loadWeatherData() {
@@ -198,12 +207,16 @@ function processWeatherData(allModelData) {
         if (processedData.labels.length === 0) {
             processedData.labels = hourlyData.time.map(time => {
                 const date = new Date(time);
-                return date.toLocaleDateString('en-US', { 
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dateStr = date.toLocaleDateString('en-US', { 
                     month: 'short', 
-                    day: 'numeric',
+                    day: 'numeric'
+                });
+                const timeStr = date.toLocaleTimeString('en-US', { 
                     hour: '2-digit',
                     minute: '2-digit'
                 });
+                return `${dateStr}\n${dayName}\n${timeStr}`;
             });
         }
         
@@ -279,7 +292,11 @@ function displayCharts(processedData) {
                             display: false
                         },
                         ticks: {
-                            maxTicksLimit: 10
+                            maxTicksLimit: 8,
+                            callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label.split('\n');
+                            }
                         }
                     },
                     y: {
@@ -424,4 +441,303 @@ function showError() {
 
 function hideError() {
     errorEl.style.display = 'none';
+}
+
+function addLocation() {
+    const coordinatesInput = document.getElementById('newLocationInput');
+    const nameInput = document.getElementById('newLocationName');
+    const locationSelect = document.getElementById('locationSelect');
+    
+    const coordinates = coordinatesInput.value.trim();
+    const name = nameInput.value.trim();
+    
+    // Validate coordinates format (lat,lon)
+    const coordPattern = /^-?\d+\.?\d*,-?\d+\.?\d*$/;
+    if (!coordPattern.test(coordinates)) {
+        alert('Please enter coordinates in format: latitude,longitude (e.g., 40.7128,-74.0060)');
+        return;
+    }
+    
+    if (!name) {
+        alert('Please enter a location name');
+        return;
+    }
+    
+    // Add new option to select
+    const option = document.createElement('option');
+    option.value = coordinates;
+    option.textContent = name;
+    locationSelect.appendChild(option);
+    
+    // Clear input fields
+    coordinatesInput.value = '';
+    nameInput.value = '';
+    
+    // Select the new location and load data
+    locationSelect.value = coordinates;
+    loadWeatherData();
+    
+    console.log('Added new location:', name, coordinates);
+}
+
+// Auto-update functionality
+async function checkForUpdates() {
+    try {
+        console.log('Checking for updates...');
+        
+        // Check if we should check for updates (based on last check time)
+        const lastCheck = localStorage.getItem('lastUpdateCheck');
+        const now = Date.now();
+        
+        if (lastCheck && (now - parseInt(lastCheck)) < UPDATE_CHECK_INTERVAL) {
+            console.log('Update check skipped - too recent');
+            return;
+        }
+        
+        // Fetch latest release info from GitHub
+        const response = await fetch(GITHUB_API_URL);
+        if (!response.ok) {
+            console.error('Failed to fetch update info:', response.status);
+            return;
+        }
+        
+        const releaseData = await response.json();
+        const latestVersion = releaseData.tag_name.replace('v', '');
+        
+        console.log('Current version:', CURRENT_VERSION);
+        console.log('Latest version:', latestVersion);
+        
+        if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+            console.log('New version available!');
+            await downloadAndApplyUpdate(latestVersion, releaseData);
+        } else {
+            console.log('No updates available');
+        }
+        
+        // Store the check time
+        localStorage.setItem('lastUpdateCheck', now.toString());
+        
+    } catch (error) {
+        console.error('Error checking for updates:', error);
+    }
+}
+
+async function downloadAndApplyUpdate(latestVersion, releaseData) {
+    try {
+        console.log('Starting update process...');
+        
+        // Show update notification
+        showUpdateNotification(latestVersion, releaseData.html_url);
+        
+        // Download new files from the release
+        const assets = releaseData.assets || [];
+        const updateFiles = [];
+        
+        for (const asset of assets) {
+            if (asset.name.endsWith('.js') || asset.name.endsWith('.html') || asset.name.endsWith('.css')) {
+                const fileResponse = await fetch(asset.browser_download_url);
+                const fileContent = await fileResponse.text();
+                updateFiles.push({
+                    name: asset.name,
+                    content: fileContent,
+                    url: asset.browser_download_url
+                });
+            }
+        }
+        
+        // Store update files in localStorage for the service worker to access
+        localStorage.setItem('pendingUpdate', JSON.stringify({
+            version: latestVersion,
+            files: updateFiles,
+            timestamp: Date.now()
+        }));
+        
+        // Trigger service worker update
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            registration.active.postMessage({
+                type: 'APPLY_UPDATE',
+                version: latestVersion,
+                files: updateFiles
+            });
+        }
+        
+        console.log('Update files downloaded and ready to apply');
+        
+    } catch (error) {
+        console.error('Error downloading update:', error);
+        showErrorNotification('Failed to download update. Please try again.');
+    }
+}
+
+function showErrorNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'update-notification error';
+    notification.innerHTML = `
+        <div class="update-content">
+            <h3>❌ Update Error</h3>
+            <p>${message}</p>
+            <div class="update-actions">
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="dismiss-btn">Dismiss</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 10000);
+}
+
+function compareVersions(version1, version2) {
+    const v1Parts = version1.split('.').map(Number);
+    const v2Parts = version2.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+        const v1 = v1Parts[i] || 0;
+        const v2 = v2Parts[i] || 0;
+        
+        if (v1 > v2) return 1;
+        if (v1 < v2) return -1;
+    }
+    
+    return 0;
+}
+
+function showUpdateNotification(latestVersion, downloadUrl) {
+    // Create update notification element
+    const notification = document.createElement('div');
+    notification.id = 'updateNotification';
+    notification.className = 'update-notification';
+    notification.innerHTML = `
+        <div class="update-content">
+            <h3>🔄 New Version Available!</h3>
+            <p>A new version (${latestVersion}) is available.</p>
+            <div class="update-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p class="progress-text">Downloading update...</p>
+            </div>
+            <div class="update-actions">
+                <button onclick="applyUpdate()" class="update-btn">Apply Update</button>
+                <button onclick="dismissUpdate()" class="dismiss-btn">Dismiss</button>
+            </div>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto-dismiss after 60 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 60000);
+}
+
+async function applyUpdate() {
+    try {
+        const notification = document.getElementById('updateNotification');
+        const progressDiv = notification.querySelector('.update-progress');
+        const actionsDiv = notification.querySelector('.update-actions');
+        
+        // Show progress
+        progressDiv.style.display = 'block';
+        actionsDiv.style.display = 'none';
+        
+        // Get pending update from localStorage
+        const pendingUpdate = JSON.parse(localStorage.getItem('pendingUpdate'));
+        if (!pendingUpdate) {
+            throw new Error('No pending update found');
+        }
+        
+        // Apply the update by replacing files
+        for (const file of pendingUpdate.files) {
+            if (file.name === 'script.js') {
+                // Update the script content
+                const scriptTag = document.querySelector('script[src="script.js"]');
+                if (scriptTag) {
+                    const newScript = document.createElement('script');
+                    newScript.textContent = file.content;
+                    scriptTag.parentNode.replaceChild(newScript, scriptTag);
+                }
+            } else if (file.name === 'styles.css') {
+                // Update the stylesheet
+                const linkTag = document.querySelector('link[href="styles.css"]');
+                if (linkTag) {
+                    const newLink = document.createElement('link');
+                    newLink.rel = 'stylesheet';
+                    newLink.href = 'data:text/css;base64,' + btoa(file.content);
+                    linkTag.parentNode.replaceChild(newLink, linkTag);
+                }
+            }
+        }
+        
+        // Update version in localStorage
+        localStorage.setItem('appVersion', pendingUpdate.version);
+        
+        // Clear pending update
+        localStorage.removeItem('pendingUpdate');
+        
+        // Show success message
+        notification.innerHTML = `
+            <div class="update-content">
+                <h3>✅ Update Applied!</h3>
+                <p>Update to version ${pendingUpdate.version} has been applied successfully.</p>
+                <div class="update-actions">
+                    <button onclick="window.location.reload()" class="update-btn">Reload Page</button>
+                </div>
+            </div>
+        `;
+        
+        console.log('Update applied successfully');
+        
+    } catch (error) {
+        console.error('Error applying update:', error);
+        showErrorNotification('Failed to apply update. Please try again.');
+    }
+}
+
+function dismissUpdate() {
+    const notification = document.getElementById('updateNotification');
+    if (notification) {
+        notification.remove();
+    }
+}
+
+// Initialize auto-update system
+async function initializeAutoUpdate() {
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            console.log('Service Worker registered:', registration);
+            
+            // Check for updates when service worker updates
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('New service worker available');
+                    }
+                });
+            });
+            
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+        }
+    }
+    
+    // Check for updates on page load
+    checkForUpdates();
+    
+    // Set up periodic update checks
+    setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL);
+    
+    console.log('Auto-update system initialized');
 } 
