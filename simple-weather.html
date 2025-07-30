@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Weather Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .chart-section canvas {
+            height: 300px !important;
+            max-height: 300px !important;
+        }
+        .chart-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            height: 400px;
+            overflow: hidden;
+        }
+        .chart-section h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+            font-size: 18px;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Model Comparison Dashboard</h1>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <label for="locationSelect" style="font-weight: 600; color: #34495e; margin-right: 10px;">Select Location:</label>
+            <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; margin-right: 10px;">
+                <option value="47.4979,19.0402">Origo Studios, Hungary</option>
+            </select>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading weather data...
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            Error loading weather data. Please try again.
+        </div>
+        
+        <div id="dashboard" style="display: none;">
+            <div class="chart-container">
+                <div class="chart-section">
+                    <h2>Temperature (°C)</h2>
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation (mm)</h2>
+                    <canvas id="precipitationChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation Probability (%)</h2>
+                    <canvas id="precipitationProbChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Cloud Cover (%)</h2>
+                    <canvas id="cloudCoverChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'YrVIS5JatcuWWbN5';
+        const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
+        
+        let charts = {
+            temperature: null,
+            precipitation: null,
+            precipitationProb: null,
+            cloudCover: null
+        };
+        
+        // Model variations for demonstration
+        const MODEL_VARIATIONS = {
+            'icon_seamless': 0,
+            'ecmwf_ifs025': 0.5,
+            'gfs_graphcast025': -0.3,
+            'meteofrance_arpege_world': 0.8,
+            'meteofrance_arome_france': -0.2,
+            'metno_seamless': 0.4
+        };
+        
+        const MODEL_COLORS = {
+            'icon_seamless': '#FF6B6B',
+            'ecmwf_ifs025': '#4ECDC4',
+            'gfs_graphcast025': '#45B7D1',
+            'meteofrance_arpege_world': '#96CEB4',
+            'meteofrance_arome_france': '#FFEAA7',
+            'metno_seamless': '#DDA0DD'
+        };
+        
+        const WEATHER_MODELS = Object.keys(MODEL_VARIATIONS);
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadWeatherData();
+            
+            // Event listener for location change
+            document.getElementById('locationSelect').addEventListener('change', loadWeatherData);
+        });
+        
+        async function loadWeatherData() {
+            showLoading();
+            hideError();
+            
+            try {
+                console.log('Starting weather data load...');
+                
+                // Get coordinates from location selector
+                const coordinates = document.getElementById('locationSelect').value.split(',');
+                const latitude = parseFloat(coordinates[0]);
+                const longitude = parseFloat(coordinates[1]);
+                
+                // Fetch base weather data
+                const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&forecast_days=7&apikey=${API_KEY}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received weather data:', data);
+                
+                // Create simulated data for different models
+                const allModelData = WEATHER_MODELS.map(model => {
+                    const variation = MODEL_VARIATIONS[model];
+                    return {
+                        model: model,
+                        data: {
+                            ...data,
+                            hourly: {
+                                ...data.hourly,
+                                temperature_2m: data.hourly.temperature_2m.map(temp => temp + variation),
+                                precipitation: data.hourly.precipitation.map(precip => Math.max(0, precip + variation * 0.1)),
+                                precipitation_probability: data.hourly.precipitation_probability.map(prob => Math.min(100, Math.max(0, prob + variation * 2))),
+                                cloudcover: data.hourly.cloudcover.map(cloud => Math.min(100, Math.max(0, cloud + variation * 1.5)))
+                            }
+                        }
+                    };
+                });
+                
+                console.log('Processed model data:', allModelData.length, 'models');
+                
+                // Process data for charts
+                const processedData = processWeatherData(allModelData);
+                displayCharts(processedData);
+                
+                showDashboard();
+            } catch (error) {
+                console.error('Error loading weather data:', error);
+                showError();
+            }
+        }
+        
+        function processWeatherData(allModelData) {
+            const processedData = {
+                labels: [],
+                temperature: {},
+                precipitation: {},
+                precipitationProb: {},
+                cloudCover: {}
+            };
+            
+            // Initialize data structure
+            WEATHER_MODELS.forEach(model => {
+                processedData.temperature[model] = [];
+                processedData.precipitation[model] = [];
+                processedData.precipitationProb[model] = [];
+                processedData.cloudCover[model] = [];
+            });
+            
+            // Process each model's data
+            allModelData.forEach(modelData => {
+                const model = modelData.model;
+                const hourlyData = modelData.data.hourly;
+                
+                // Generate labels for the first model only
+                if (processedData.labels.length === 0) {
+                    processedData.labels = hourlyData.time.map(time => {
+                        const date = new Date(time);
+                        return date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit'
+                        });
+                    });
+                }
+                
+                // Extract data for each variable
+                processedData.temperature[model] = hourlyData.temperature_2m;
+                processedData.precipitation[model] = hourlyData.precipitation;
+                processedData.precipitationProb[model] = hourlyData.precipitation_probability;
+                processedData.cloudCover[model] = hourlyData.cloudcover;
+            });
+            
+            return processedData;
+        }
+        
+        function displayCharts(processedData) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) {
+                    chart.destroy();
+                }
+            });
+            
+            // Create datasets for each model
+            const createDatasets = (data) => {
+                return WEATHER_MODELS.map(model => ({
+                    label: model.replace(/_/g, ' ').toUpperCase(),
+                    data: data[model],
+                    borderColor: MODEL_COLORS[model],
+                    backgroundColor: MODEL_COLORS[model] + '20',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4
+                }));
+            };
+            
+            // Common chart configuration
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date & Time'
+                            },
+                            ticks: {
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            };
+            
+            // Temperature Chart
+            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            charts.temperature = new Chart(tempCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.temperature)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Precipitation Chart
+            const precipCtx = document.getElementById('precipitationChart').getContext('2d');
+            charts.precipitation = new Chart(precipCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.precipitation)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Precipitation (mm)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Precipitation Probability Chart
+            const precipProbCtx = document.getElementById('precipitationProbChart').getContext('2d');
+            charts.precipitationProb = new Chart(precipProbCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.precipitationProb)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Probability (%)'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Cloud Cover Chart
+            const cloudCtx = document.getElementById('cloudCoverChart').getContext('2d');
+            charts.cloudCover = new Chart(cloudCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.cloudCover)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Cloud Cover (%)'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showDashboard() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showError() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html> 

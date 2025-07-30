@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather API Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Weather API Debug</h1>
+    
+    <button onclick="testSimpleAPI()">Test Simple API Call</button>
+    <button onclick="testAllModels()">Test All Models</button>
+    <button onclick="testChartJS()">Test Chart.js</button>
+    
+    <div id="output"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const API_KEY = 'YrVIS5JatcuWWbN5';
+        const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
+        
+        function log(message, data = null) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'debug';
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            if (data) {
+                logEntry.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            output.appendChild(logEntry);
+        }
+        
+        async function testSimpleAPI() {
+            log('Testing simple API call...');
+            try {
+                const response = await fetch(`${BASE_URL}?latitude=47.4979&longitude=19.0402&hourly=temperature_2m&forecast_days=1&apikey=${API_KEY}`);
+                log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('API Response:', data);
+            } catch (error) {
+                log('Error:', error.message);
+            }
+        }
+        
+        async function testAllModels() {
+            log('Testing all models API call...');
+            try {
+                const models = 'icon_seamless,ecmwf_ifs025,gfs_graphcast025,meteofrance_arpege_world,meteofrance_arome_france,metno_seamless';
+                const response = await fetch(`${BASE_URL}?latitude=47.4979&longitude=19.0402&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${models}&forecast_days=1&apikey=${API_KEY}`);
+                log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('All Models Response:', data);
+            } catch (error) {
+                log('Error:', error.message);
+            }
+        }
+        
+        function testChartJS() {
+            log('Testing Chart.js...');
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 200;
+                document.body.appendChild(canvas);
+                
+                const ctx = canvas.getContext('2d');
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar'],
+                        datasets: [{
+                            label: 'Test Data',
+                            data: [10, 20, 30],
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: false
+                    }
+                });
+                
+                log('Chart.js test successful');
+            } catch (error) {
+                log('Chart.js Error:', error.message);
+            }
+        }
+    </script>
+</body>
+</html> 
