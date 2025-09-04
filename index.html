@@ -461,6 +461,7 @@
         function processWeatherData(allModelData) {
             const processedData = {
                 labels: [],
+                displayLabels: [], // Separate array for display labels
                 temperature: {},
                 precipitation: {},
                 precipitationProb: {},
@@ -482,11 +483,18 @@
                 
                 // Generate labels for the first model only
                 if (processedData.labels.length === 0) {
+                    // Create labels array with all hours
                     processedData.labels = hourlyData.time.map((time, index) => {
+                        const date = new Date(time);
+                        return time; // Use the original time string for data alignment
+                    });
+                    
+                    // Create display labels array with only 9AM and 9PM
+                    processedData.displayLabels = hourlyData.time.map((time, index) => {
                         const date = new Date(time);
                         const hour = date.getHours();
                         
-                        // Only show labels for 9AM and 9PM, but keep all data points
+                        // Only show labels for 9AM and 9PM
                         if (hour !== 9 && hour !== 21) {
                             return ''; // Empty string for other hours
                         }
@@ -566,7 +574,15 @@
                                 text: 'Date & Time'
                             },
                             ticks: {
-                                maxTicksLimit: 14 // Show only 9AM and 9PM labels
+                                maxTicksLimit: 14, // Show only 9AM and 9PM labels
+                                callback: function(value, index, values) {
+                                    // Use the display labels array
+                                    const displayLabel = processedData.displayLabels[index];
+                                    if (displayLabel && displayLabel.trim() !== '') {
+                                        return displayLabel.split('\n');
+                                    }
+                                    return ''; // Hide other labels
+                                }
                             }
                         },
                         y: {
