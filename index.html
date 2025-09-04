@@ -101,7 +101,7 @@
         </div>
         
         <div style="text-align: center; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                 <!-- Manual Refresh Button -->
                 <button onclick="refreshWeatherData()" style="padding: 8px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                     🔄 Refresh
@@ -114,26 +114,10 @@
                 </div>
                 
                 <!-- Location Selector -->
-                <label for="locationSelect" style="font-weight: 600; color: #34495e;">Location:</label>
+                <label for="locationSelect" style="font-weight: 600; color: #34495e;">Select Location:</label>
                 <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px;">
                     <option value="47.4979,19.0402">Origo Studios, Hungary</option>
                 </select>
-                
-                <!-- Location Search -->
-                <div style="position: relative;">
-                    <input type="text" id="locationSearchInput" placeholder="Search location..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;" onkeyup="searchLocations(event)">
-                    <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
-                </div>
-                
-                <!-- Coordinates Input -->
-                <input type="text" id="newLocationInput" placeholder="Coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 180px;">
-                
-                <!-- Location Name -->
-                <input type="text" id="newLocationName" placeholder="Name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 120px;">
-                
-                <!-- Add/Remove Buttons -->
-                <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
-                <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
                 
                 <!-- Sun Times -->
                 <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e0e6ed;">
@@ -266,6 +250,39 @@
                             <input type="checkbox" id="showSeconds" style="margin: 0;">
                             <span>Show seconds in time</span>
                         </label>
+                    </div>
+                </div>
+                
+                <!-- Location Management -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Location Management</h3>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Location Search -->
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #2c3e50;">Search Location:</label>
+                            <div style="position: relative;">
+                                <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 100%;" onkeyup="searchLocations(event)">
+                                <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Coordinates -->
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #2c3e50;">Or Enter Coordinates:</label>
+                            <input type="text" id="newLocationInput" placeholder="Latitude,Longitude (e.g., 40.7128,-74.0060)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 100%;">
+                        </div>
+                        
+                        <!-- Location Name -->
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #2c3e50;">Custom Name:</label>
+                            <input type="text" id="newLocationName" placeholder="Enter a name for this location" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 100%;">
+                        </div>
+                        
+                        <!-- Add/Remove Buttons -->
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="addLocation()" style="flex: 1; padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500;">Add Location</button>
+                            <button onclick="removeCustomLocation()" style="flex: 1; padding: 10px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500;">Remove Selected</button>
+                        </div>
                     </div>
                 </div>
                 
