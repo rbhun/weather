@@ -182,14 +182,7 @@
                         <div style="width: 20px; height: 20px; background-color: #96CEB4; border-radius: 4px;"></div>
                         <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arpege</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #FFEAA7; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arome</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #DDA0DD; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">MetNo Seamless</span>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -262,14 +255,7 @@
                             <input type="checkbox" id="model-arpege" checked style="margin: 0;">
                             <span>MeteoFrance Arpege</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-arome" checked style="margin: 0;">
-                            <span>MeteoFrance Arome</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-metno" checked style="margin: 0;">
-                            <span>MetNo Seamless</span>
-                        </label>
+
                     </div>
                 </div>
                 
@@ -352,11 +338,11 @@
             precipUnit: 'mm',
             timeFormat: '12h',
             showSeconds: false,
-            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless']
+            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world']
         };
         
-        // Real weather models available in Open-Meteo API
-        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless'];
+        // Real weather models available in Open-Meteo API (working models only)
+        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world'];
         
         const MODEL_COLORS = {
             'icon_seamless': '#FF6B6B',
@@ -856,9 +842,7 @@
                 { id: 'model-icon', model: 'icon_seamless' },
                 { id: 'model-ecmwf', model: 'ecmwf_ifs025' },
                 { id: 'model-gfs', model: 'gfs_graphcast025' },
-                { id: 'model-arpege', model: 'meteofrance_arpege_world' },
-                { id: 'model-arome', model: 'meteofrance_arome_france' },
-                { id: 'model-metno', model: 'metno_seamless' }
+                { id: 'model-arpege', model: 'meteofrance_arpege_world' }
             ];
             
             modelCheckboxes.forEach(({ id, model }) => {
