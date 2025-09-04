@@ -4,9 +4,11 @@ A comprehensive weather dashboard that compares multiple weather models with aut
 
 ## Features
 
-- **Multi-Model Weather Comparison**: Compare forecasts from 6 different weather models
+- **Multi-Model Weather Comparison**: Compare forecasts from 8 different weather models
 - **Real-time Data**: Fetches live weather data from Open-Meteo API
 - **Interactive Charts**: Beautiful, responsive charts using Chart.js
+- **Server-Side Location Storage**: Locations are saved on the server and shared across all users
+- **Geocoding Search**: Search for locations by name with autocomplete suggestions
 - **Auto-Update System**: Automatically checks for and applies updates from GitHub releases
 - **PWA Support**: Can be installed as a Progressive Web App
 - **Offline Capability**: Service worker caches resources for offline use
@@ -14,12 +16,46 @@ A comprehensive weather dashboard that compares multiple weather models with aut
 ## Weather Models
 
 The dashboard compares forecasts from these weather models:
-- **ICON Seamless** - German Weather Service
+- **DWD ICON Seamless** - German Weather Service (DWD)
 - **ECMWF IFS025** - European Centre for Medium-Range Weather Forecasts
 - **GFS GraphCast025** - NOAA Global Forecast System
 - **MeteoFrance Arpege** - French Weather Service (Global)
-- **MeteoFrance Arome** - French Weather Service (Regional)
+- **MeteoFrance Seamless** - French Weather Service (Seamless)
 - **MetNo Seamless** - Norwegian Meteorological Institute
+- **GFS Seamless** - NOAA Global Forecast System (Seamless)
+- **GEM Seamless** - Environment Canada Global Environmental Multiscale Model
+- **UK MET Office Seamless** - UK Meteorological Office
+
+## Server-Side Location Storage
+
+The dashboard now includes server-side location management:
+
+### Features
+- **Shared Locations**: All users see the same location list
+- **Persistent Storage**: Locations are saved in `locations.json` on the server
+- **REST API**: Full CRUD operations for location management
+- **Geocoding Integration**: Search locations by name with autocomplete
+
+### API Endpoints
+- `GET /api/locations` - Get all locations
+- `POST /api/locations` - Add new location
+- `PUT /api/locations/:id` - Update location
+- `DELETE /api/locations/:id` - Delete location
+- `GET /api/health` - Health check
+
+### Running the Server
+```bash
+# Install dependencies
+npm install
+
+# Start the server
+node server.js
+
+# Or use the deployment script
+./deploy.sh
+```
+
+The server will be available at `http://localhost:3000`
 
 ## Auto-Update System
 

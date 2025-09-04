@@ -171,7 +171,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #FF6B6B; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">ICON Seamless</span>
+                        <span style="font-weight: 600; color: #2c3e50;">DWD ICON Seamless</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #4ECDC4; border-radius: 4px;"></div>
@@ -187,7 +187,7 @@
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #FFEAA7; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arome</span>
+                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Seamless</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #DDA0DD; border-radius: 4px;"></div>
@@ -200,6 +200,10 @@
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #6C5CE7; border-radius: 4px;"></div>
                         <span style="font-weight: 600; color: #2c3e50;">GEM Seamless</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #00B894; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">UK MET Office Seamless</span>
                     </div>
                 </div>
             </div>
@@ -292,7 +296,7 @@
                     <div style="display: flex; flex-direction: column; gap: 8px;">
                         <label style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" id="model-icon" checked style="margin: 0;">
-                            <span>ICON Seamless</span>
+                            <span>DWD ICON Seamless</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" id="model-ecmwf" checked style="margin: 0;">
@@ -307,8 +311,8 @@
                             <span>MeteoFrance Arpege</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-arome" checked style="margin: 0;">
-                            <span>MeteoFrance Arome</span>
+                            <input type="checkbox" id="model-meteofrance-seamless" checked style="margin: 0;">
+                            <span>MeteoFrance Seamless</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" id="model-metno" checked style="margin: 0;">
@@ -321,6 +325,10 @@
                         <label style="display: flex; align-items: center; gap: 10px;">
                             <input type="checkbox" id="model-gem-seamless" checked style="margin: 0;">
                             <span>GEM Seamless</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-ukmo-seamless" checked style="margin: 0;">
+                            <span>UK MET Office Seamless</span>
                         </label>
                     </div>
                 </div>
@@ -405,21 +413,22 @@
             precipUnit: 'mm',
             timeFormat: '12h',
             showSeconds: false,
-            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless', 'gfs_seamless', 'gem_seamless']
+            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_seamless', 'metno_seamless', 'gfs_seamless', 'gem_seamless', 'ukmo_seamless']
         };
         
         // Real weather models available in Open-Meteo API
-        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless', 'gfs_seamless', 'gem_seamless'];
+        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_seamless', 'metno_seamless', 'gfs_seamless', 'gem_seamless', 'ukmo_seamless'];
         
         const MODEL_COLORS = {
             'icon_seamless': '#FF6B6B',
             'ecmwf_ifs025': '#4ECDC4',
             'gfs_graphcast025': '#45B7D1',
             'meteofrance_arpege_world': '#96CEB4',
-            'meteofrance_arome_france': '#FFEAA7',
+            'meteofrance_seamless': '#FFEAA7',
             'metno_seamless': '#DDA0DD',
             'gfs_seamless': '#FF9F43',
-            'gem_seamless': '#6C5CE7'
+            'gem_seamless': '#6C5CE7',
+            'ukmo_seamless': '#00B894'
         };
         
         // Auto-refresh configuration
@@ -1267,16 +1276,17 @@
             
             // Get selected models
             const selectedModels = [];
-            const modelCheckboxes = [
-                { id: 'model-icon', model: 'icon_seamless' },
-                { id: 'model-ecmwf', model: 'ecmwf_ifs025' },
-                { id: 'model-gfs', model: 'gfs_graphcast025' },
-                { id: 'model-arpege', model: 'meteofrance_arpege_world' },
-                { id: 'model-arome', model: 'meteofrance_arome_france' },
-                { id: 'model-metno', model: 'metno_seamless' },
-                { id: 'model-gfs-seamless', model: 'gfs_seamless' },
-                { id: 'model-gem-seamless', model: 'gem_seamless' }
-            ];
+                    const modelCheckboxes = [
+            { id: 'model-icon', model: 'icon_seamless' },
+            { id: 'model-ecmwf', model: 'ecmwf_ifs025' },
+            { id: 'model-gfs', model: 'gfs_graphcast025' },
+            { id: 'model-arpege', model: 'meteofrance_arpege_world' },
+            { id: 'model-meteofrance-seamless', model: 'meteofrance_seamless' },
+            { id: 'model-metno', model: 'metno_seamless' },
+            { id: 'model-gfs-seamless', model: 'gfs_seamless' },
+            { id: 'model-gem-seamless', model: 'gem_seamless' },
+            { id: 'model-ukmo-seamless', model: 'ukmo_seamless' }
+        ];
             
             modelCheckboxes.forEach(({ id, model }) => {
                 if (document.getElementById(id).checked) {
