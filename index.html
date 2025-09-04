@@ -351,6 +351,7 @@
             
             <div style="text-align: center; margin-top: 30px;">
                 <button onclick="applySettings()" style="padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">Apply Settings</button>
+                <button onclick="testModelValidation()" style="padding: 12px 30px; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-left: 10px;">Test Model Validation</button>
             </div>
         </div>
     </div>
@@ -425,11 +426,16 @@
                 const data = await response.json();
                 console.log('Received weather data:', data);
                 
+                // Check model availability and validate data
+                const modelValidation = validateModelData(data, settings.selectedModels);
+                console.log('Model validation results:', modelValidation);
+                
                 // Process real data from each model
                 const allModelData = settings.selectedModels.map(model => {
                     // Extract data for this specific model
                     const modelData = {
                         model: model,
+                        available: modelValidation.availableModels.includes(model),
                         data: {
                             ...data,
                             hourly: {
@@ -455,10 +461,16 @@
                 });
                 
                 console.log('Processed model data:', allModelData.length, 'models');
+                console.log('Available models:', modelValidation.availableModels.length);
+                console.log('Unavailable models:', modelValidation.unavailableModels);
+                console.log('Duplicate models:', modelValidation.duplicateModels);
                 
                 // Process data for charts
                 const processedData = processWeatherData(allModelData);
                 displayCharts(processedData);
+                
+                // Show model status information
+                displayModelStatus(modelValidation);
                 
                 showDashboard();
             } catch (error) {
@@ -467,6 +479,169 @@
                 console.error('API URL:', `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${modelsParam}&forecast_days=7&apikey=${API_KEY}`);
                 showError();
             }
+        }
+        
+        function validateModelData(data, requestedModels) {
+            const validation = {
+                availableModels: [],
+                unavailableModels: [],
+                duplicateModels: [],
+                dataQuality: {}
+            };
+            
+            // Check which models have data available
+            requestedModels.forEach(model => {
+                const hasTemperature = data.hourly[`temperature_2m_${model}`] !== undefined;
+                const hasPrecipitation = data.hourly[`precipitation_${model}`] !== undefined;
+                const hasPrecipProb = data.hourly[`precipitation_probability_${model}`] !== undefined;
+                const hasCloudCover = data.hourly[`cloudcover_${model}`] !== undefined;
+                
+                if (hasTemperature && hasPrecipitation && hasPrecipProb && hasCloudCover) {
+                    validation.availableModels.push(model);
+                    
+                    // Check data quality
+                    const tempData = data.hourly[`temperature_2m_${model}`];
+                    const hasValidData = tempData && tempData.length > 0 && tempData.every(val => val !== null && val !== undefined);
+                    validation.dataQuality[model] = {
+                        hasValidData: hasValidData,
+                        dataPoints: tempData ? tempData.length : 0
+                    };
+                } else {
+                    validation.unavailableModels.push({
+                        model: model,
+                        missing: {
+                            temperature: !hasTemperature,
+                            precipitation: !hasPrecipitation,
+                            precipitation_probability: !hasPrecipProb,
+                            cloudcover: !hasCloudCover
+                        }
+                    });
+                }
+            });
+            
+            // Check for duplicate data between models
+            if (validation.availableModels.length > 1) {
+                const tempData = {};
+                validation.availableModels.forEach(model => {
+                    tempData[model] = data.hourly[`temperature_2m_${model}`];
+                });
+                
+                // Compare temperature data between models
+                const modelPairs = [];
+                for (let i = 0; i < validation.availableModels.length; i++) {
+                    for (let j = i + 1; j < validation.availableModels.length; j++) {
+                        modelPairs.push([validation.availableModels[i], validation.availableModels[j]]);
+                    }
+                }
+                
+                modelPairs.forEach(([model1, model2]) => {
+                    const data1 = tempData[model1];
+                    const data2 = tempData[model2];
+                    
+                    if (data1 && data2 && data1.length === data2.length) {
+                        // Check if data is identical (allowing for small floating point differences)
+                        const isIdentical = data1.every((val, index) => {
+                            const diff = Math.abs(val - data2[index]);
+                            return diff < 0.001; // Allow 0.001°C difference
+                        });
+                        
+                        if (isIdentical) {
+                            validation.duplicateModels.push({
+                                models: [model1, model2],
+                                reason: 'Identical temperature data',
+                                similarity: 100
+                            });
+                        } else {
+                            // Calculate similarity percentage
+                            const totalDiff = data1.reduce((sum, val, index) => sum + Math.abs(val - data2[index]), 0);
+                            const avgDiff = totalDiff / data1.length;
+                            const similarity = Math.max(0, 100 - (avgDiff * 10)); // Rough similarity calculation
+                            
+                            if (similarity > 95) {
+                                validation.duplicateModels.push({
+                                    models: [model1, model2],
+                                    reason: 'Very similar data',
+                                    similarity: Math.round(similarity)
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+            
+            return validation;
+        }
+        
+        function displayModelStatus(validation) {
+            // Create or update model status display
+            let statusDiv = document.getElementById('modelStatus');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'modelStatus';
+                statusDiv.style.cssText = 'background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);';
+                document.getElementById('dashboard').appendChild(statusDiv);
+            }
+            
+            let statusHTML = '<h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">📊 Model Status & Data Quality</h3>';
+            
+            // Summary
+            const totalRequested = validation.availableModels.length + validation.unavailableModels.length;
+            statusHTML += `<div style="text-align: center; margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; border: 2px solid #e0e6ed;">`;
+            statusHTML += `<strong>Summary:</strong> ${validation.availableModels.length}/${totalRequested} models available`;
+            if (validation.duplicateModels.length > 0) {
+                statusHTML += ` | ${validation.duplicateModels.length} duplicate pairs detected`;
+            }
+            statusHTML += '</div>';
+            
+            // Available models
+            statusHTML += '<div style="margin-bottom: 15px;">';
+            statusHTML += `<h4 style="color: #27ae60; margin-bottom: 10px;">✅ Available Models (${validation.availableModels.length})</h4>`;
+            if (validation.availableModels.length > 0) {
+                statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+                validation.availableModels.forEach(model => {
+                    const quality = validation.dataQuality[model];
+                    const statusIcon = quality.hasValidData ? '✅' : '⚠️';
+                    const dataPoints = quality.dataPoints || 0;
+                    statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #27ae60;">${statusIcon} ${model.replace(/_/g, ' ').toUpperCase()}<br><small style="color: #666;">${dataPoints} data points</small></div>`;
+                });
+                statusHTML += '</div>';
+            } else {
+                statusHTML += '<div style="padding: 15px; background: #fff3cd; border-radius: 6px; color: #856404; text-align: center;">No models are currently available for this location</div>';
+            }
+            statusHTML += '</div>';
+            
+            // Unavailable models
+            if (validation.unavailableModels.length > 0) {
+                statusHTML += '<div style="margin-bottom: 15px;">';
+                statusHTML += `<h4 style="color: #e74c3c; margin-bottom: 10px;">❌ Unavailable Models (${validation.unavailableModels.length})</h4>`;
+                statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+                validation.unavailableModels.forEach(item => {
+                    const missing = Object.entries(item.missing).filter(([key, value]) => value).map(([key]) => key).join(', ');
+                    statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #e74c3c;">❌ ${item.model.replace(/_/g, ' ').toUpperCase()}<br><small style="color: #666;">Missing: ${missing}</small></div>`;
+                });
+                statusHTML += '</div></div>';
+            }
+            
+            // Duplicate models
+            if (validation.duplicateModels.length > 0) {
+                statusHTML += '<div style="margin-bottom: 15px;">';
+                statusHTML += `<h4 style="color: #f39c12; margin-bottom: 10px;">⚠️ Similar/Duplicate Models (${validation.duplicateModels.length})</h4>`;
+                statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">';
+                validation.duplicateModels.forEach(item => {
+                    const models = item.models.map(m => m.replace(/_/g, ' ').toUpperCase()).join(' ↔ ');
+                    statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #f39c12;">⚠️ ${models}<br><small style="color: #666;">${item.reason} (${item.similarity}% similar)</small></div>`;
+                });
+                statusHTML += '</div></div>';
+            }
+            
+            // All good message
+            if (validation.availableModels.length > 0 && validation.unavailableModels.length === 0 && validation.duplicateModels.length === 0) {
+                statusHTML += '<div style="padding: 15px; background: #d4edda; border-radius: 6px; color: #155724; text-align: center; border: 1px solid #c3e6cb;">';
+                statusHTML += '🎉 All models are working perfectly! No issues detected.';
+                statusHTML += '</div>';
+            }
+            
+            statusDiv.innerHTML = statusHTML;
         }
         
         function processWeatherData(allModelData) {
@@ -534,17 +709,24 @@
                 }
             });
             
-            // Create datasets for each model
+            // Create datasets for each model (only available ones)
             const createDatasets = (data) => {
-                return WEATHER_MODELS.map(model => ({
-                    label: model.replace(/_/g, ' ').toUpperCase(),
-                    data: data[model],
-                    borderColor: MODEL_COLORS[model],
-                    backgroundColor: MODEL_COLORS[model] + '20',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4
-                }));
+                return WEATHER_MODELS.map(model => {
+                    // Check if model has data
+                    const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
+                    
+                    return {
+                        label: model.replace(/_/g, ' ').toUpperCase(),
+                        data: hasData ? data[model] : [],
+                        borderColor: MODEL_COLORS[model],
+                        backgroundColor: MODEL_COLORS[model] + '20',
+                        borderWidth: hasData ? 2 : 1,
+                        fill: false,
+                        tension: 0.4,
+                        hidden: !hasData, // Hide models without data
+                        pointRadius: hasData ? 3 : 0
+                    };
+                }).filter(dataset => dataset.data.length > 0); // Only include models with data
             };
             
             // Common chart configuration
@@ -1370,6 +1552,55 @@
             updateStatusDisplay();
             
             console.log('Auto-update system initialized');
+        }
+
+        // Test function to demonstrate model validation
+        function testModelValidation() {
+            console.log('Testing model validation with simulated data...');
+            
+            // Create a test validation object with some issues
+            const testValidation = {
+                availableModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world'],
+                unavailableModels: [
+                    {
+                        model: 'meteofrance_arome_france',
+                        missing: {
+                            temperature: false,
+                            precipitation: true,
+                            precipitation_probability: true,
+                            cloudcover: false
+                        }
+                    },
+                    {
+                        model: 'metno_seamless',
+                        missing: {
+                            temperature: true,
+                            precipitation: false,
+                            precipitation_probability: false,
+                            cloudcover: true
+                        }
+                    }
+                ],
+                duplicateModels: [
+                    {
+                        models: ['gfs_seamless', 'gem_seamless'],
+                        reason: 'Identical temperature data',
+                        similarity: 100
+                    }
+                ],
+                dataQuality: {
+                    'icon_seamless': { hasValidData: true, dataPoints: 168 },
+                    'ecmwf_ifs025': { hasValidData: true, dataPoints: 168 },
+                    'gfs_graphcast025': { hasValidData: true, dataPoints: 168 },
+                    'meteofrance_arpege_world': { hasValidData: false, dataPoints: 0 }
+                }
+            };
+            
+            // Display the test validation
+            displayModelStatus(testValidation);
+            
+            // Show alert
+            alert('Test model validation displayed! Check the "Model Status & Data Quality" section below the charts to see how unavailable and duplicate models are reported.');
         }
 
         // Initialize auto-update when page loads
