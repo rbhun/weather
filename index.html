@@ -107,16 +107,28 @@
                     <option value="47.4979,19.0402">Origo Studios, Hungary</option>
                 </select>
                 
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <div style="position: relative;">
-                        <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 250px;" onkeyup="searchLocations(event)">
-                        <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
-                    </div>
-                    <input type="text" id="newLocationInput" placeholder="Or enter coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
-                    <input type="text" id="newLocationName" placeholder="Custom name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
-                    <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
-                    <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
+                <!-- Manual Refresh Button -->
+                <button onclick="refreshWeatherData()" style="padding: 8px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    🔄 Refresh
+                </button>
+                
+                <!-- Auto-refresh Status -->
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e6ed;">
+                    <span style="font-size: 12px; color: #666;">Auto-refresh:</span>
+                    <span id="autoRefreshStatus" style="font-size: 12px; color: #27ae60; font-weight: 600;">30 min</span>
                 </div>
+            </div>
+            
+            <!-- Location Management Row -->
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                <div style="position: relative;">
+                    <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 250px;" onkeyup="searchLocations(event)">
+                    <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                </div>
+                <input type="text" id="newLocationInput" placeholder="Or enter coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
+                <input type="text" id="newLocationName" placeholder="Custom name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
+                <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
+                <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
             </div>
             
             <!-- Sun Times Row -->
@@ -390,11 +402,19 @@
             'gem_seamless': '#6C5CE7'
         };
         
+        // Auto-refresh configuration
+        let autoRefreshInterval = null;
+        const AUTO_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+        let lastRefreshTime = Date.now();
+        
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             loadCustomLocations(); // Load saved custom locations
             loadWeatherData();
             loadSunTimes();
+            
+            // Start auto-refresh
+            startAutoRefresh();
             
             // Event listener for location change
             document.getElementById('locationSelect').addEventListener('change', function() {
@@ -402,6 +422,62 @@
                 loadSunTimes();
             });
         });
+        
+        // Auto-refresh functions
+        function startAutoRefresh() {
+            // Clear any existing interval
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            // Set up new interval
+            autoRefreshInterval = setInterval(() => {
+                console.log('Auto-refreshing weather data...');
+                refreshWeatherData();
+            }, AUTO_REFRESH_INTERVAL);
+            
+            console.log('Auto-refresh started: every 30 minutes');
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                console.log('Auto-refresh stopped');
+            }
+        }
+        
+        function refreshWeatherData() {
+            lastRefreshTime = Date.now();
+            updateRefreshStatus();
+            loadWeatherData();
+            loadSunTimes();
+        }
+        
+        function updateRefreshStatus() {
+            const statusElement = document.getElementById('autoRefreshStatus');
+            if (statusElement) {
+                const timeSinceLastRefresh = Date.now() - lastRefreshTime;
+                const minutesSince = Math.floor(timeSinceLastRefresh / (1000 * 60));
+                const secondsSince = Math.floor((timeSinceLastRefresh % (1000 * 60)) / 1000);
+                
+                if (minutesSince < 1) {
+                    statusElement.textContent = 'Just refreshed';
+                    statusElement.style.color = '#27ae60';
+                } else if (minutesSince < 30) {
+                    const remainingMinutes = 30 - minutesSince;
+                    const remainingSeconds = 60 - secondsSince;
+                    statusElement.textContent = `${remainingMinutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+                    statusElement.style.color = '#f39c12';
+                } else {
+                    statusElement.textContent = 'Overdue';
+                    statusElement.style.color = '#e74c3c';
+                }
+            }
+        }
+        
+        // Update status every second
+        setInterval(updateRefreshStatus, 1000);
         
         async function loadWeatherData() {
             showLoading();
