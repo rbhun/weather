@@ -403,17 +403,6 @@
                 
                 // Process real data from each model
                 const allModelData = settings.selectedModels.map(model => {
-                    console.log(`Processing model: ${model}`);
-                    
-                    // Check if model data exists
-                    const hasModelData = data.hourly[`temperature_2m_${model}`] !== undefined;
-                    console.log(`Model ${model} has data:`, hasModelData);
-                    
-                    if (!hasModelData) {
-                        console.warn(`Skipping model ${model} - no data available`);
-                        return null; // Skip this model
-                    }
-                    
                     // Extract data for this specific model
                     const modelData = {
                         model: model,
@@ -421,15 +410,13 @@
                             ...data,
                             hourly: {
                                 time: data.hourly.time,
-                                temperature_2m: data.hourly[`temperature_2m_${model}`],
-                                precipitation: data.hourly[`precipitation_${model}`] || [],
-                                precipitation_probability: data.hourly[`precipitation_probability_${model}`] || [],
-                                cloudcover: data.hourly[`cloudcover_${model}`] || []
+                                temperature_2m: data.hourly[`temperature_2m_${model}`] || data.hourly.temperature_2m,
+                                precipitation: data.hourly[`precipitation_${model}`] || data.hourly.precipitation,
+                                precipitation_probability: data.hourly[`precipitation_probability_${model}`] || data.hourly.precipitation_probability,
+                                cloudcover: data.hourly[`cloudcover_${model}`] || data.hourly.cloudcover
                             }
                         }
                     };
-                    
-                    console.log(`Model ${model} data length:`, modelData.data.hourly.temperature_2m.length);
                     
                     // Apply unit conversions if needed
                     if (settings.tempUnit === 'fahrenheit') {
@@ -441,7 +428,7 @@
                     }
                     
                     return modelData;
-                }).filter(modelData => modelData !== null); // Remove null entries
+                });
                 
                 console.log('Processed model data:', allModelData.length, 'models');
                 
@@ -453,7 +440,7 @@
             } catch (error) {
                 console.error('Error loading weather data:', error);
                 console.error('API Key being used:', API_KEY);
-                console.error('Error details:', error.message);
+                console.error('API URL:', `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${modelsParam}&forecast_days=7&apikey=${API_KEY}`);
                 showError();
             }
         }
@@ -461,7 +448,6 @@
         function processWeatherData(allModelData) {
             const processedData = {
                 labels: [],
-                timeData: [], // Store original time data for callback access
                 temperature: {},
                 precipitation: {},
                 precipitationProb: {},
@@ -483,19 +469,8 @@
                 
                 // Generate labels for the first model only
                 if (processedData.labels.length === 0) {
-                    // Store original time data for callback access
-                    processedData.timeData = hourlyData.time;
-                    
-                    // Create labels array with only 9AM and 9PM labels
-                    processedData.labels = hourlyData.time.map((time, index) => {
+                    processedData.labels = hourlyData.time.map(time => {
                         const date = new Date(time);
-                        const hour = date.getHours();
-                        
-                        // Only create labels for 9AM and 9PM
-                        if (hour !== 9 && hour !== 21) {
-                            return ''; // Empty string for other hours
-                        }
-                        
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                         const dateStr = date.toLocaleDateString('en-US', { 
                             month: 'short', 
@@ -517,10 +492,10 @@
                     });
                 }
                 
-                // Extract data for each variable (all hourly data)
+                // Extract data for each variable
                 processedData.temperature[model] = hourlyData.temperature_2m;
                 processedData.precipitation[model] = hourlyData.precipitation;
-                processedData.precipitationProb[model] = hourlyData.precipitation_probability.map(prob => prob === null ? 0 : prob); // Handle null values
+                processedData.precipitationProb[model] = hourlyData.precipitation_probability;
                 processedData.cloudCover[model] = hourlyData.cloudcover;
             });
             
@@ -571,7 +546,11 @@
                                 text: 'Date & Time'
                             },
                             ticks: {
-                                maxTicksLimit: 14 // Show only 9AM and 9PM labels
+                                maxTicksLimit: 8,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.split('\n');
+                                }
                             }
                         },
                         y: {
@@ -844,7 +823,7 @@
         }
         
         // Auto-update configuration
-        const GITHUB_REPO = 'rbhun/weather'; // Your actual GitHub repo
+        const GITHUB_REPO = 'rbhun/weather'; // Replace with your actual GitHub repo
         const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
         const CURRENT_VERSION = '1.0.0'; // Current version of the app
         const DEFAULT_UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
@@ -858,12 +837,6 @@
         // Auto-update functions
         async function checkForUpdates() {
             try {
-                // Skip update check if no repository is configured
-                if (!GITHUB_REPO || !GITHUB_API_URL) {
-                    console.log('Auto-update disabled - no GitHub repository configured');
-                    return;
-                }
-                
                 console.log('Checking for updates...');
                 
                 // Check if we should check for updates (based on last check time)

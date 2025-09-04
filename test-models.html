@@ -118,7 +118,7 @@
     <div class="container">
         <h1>Weather Model Comparison Test</h1>
         <p style="text-align: center; color: #666; margin-bottom: 30px;">
-            Testing temperature predictions for tomorrow 9AM from different weather models
+            Testing temperature predictions for tomorrow from different weather models
         </p>
         
         <div style="text-align: center; margin-bottom: 20px;">
@@ -221,15 +221,11 @@
                     // Get the temperature data for this specific model
                     const modelTempData = data.hourly[`temperature_2m_${model}`] || data.hourly.temperature_2m;
                     const tomorrowData = modelTempData.slice(24, 48);
-                    const tomorrowTimes = data.hourly.time.slice(24, 48);
-                    
-                    // Find 9AM temperature (index 9 in the 24-hour slice)
-                    const nineAMIndex = 9;
-                    const nineAMTemp = tomorrowData[nineAMIndex];
+                    const noonTemp = tomorrowData[12]; // Noon temperature
                     
                     return {
                         model: model,
-                        temperature: nineAMTemp,
+                        temperature: noonTemp,
                         variation: 0, // No variation since we're using real data
                         color: MODEL_COLORS[model],
                         description: MODEL_DESCRIPTIONS[model]
