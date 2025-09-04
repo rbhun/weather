@@ -165,24 +165,8 @@
             
             <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
                 <h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">Weather Models Legend</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #FF6B6B; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">ICON Seamless</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #4ECDC4; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">ECMWF IFS025</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #45B7D1; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">GFS GraphCast025</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
-                        <div style="width: 20px; height: 20px; background-color: #96CEB4; border-radius: 4px;"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arpege</span>
-                    </div>
-
+                <div id="model-legend" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <!-- Dynamic legend will be inserted here -->
                 </div>
             </div>
         </div>
@@ -238,24 +222,8 @@
                 <!-- Model Selection -->
                 <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
                     <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Weather Models</h3>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-icon" checked style="margin: 0;">
-                            <span>ICON Seamless</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-ecmwf" checked style="margin: 0;">
-                            <span>ECMWF IFS025</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-gfs" checked style="margin: 0;">
-                            <span>GFS GraphCast025</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="model-arpege" checked style="margin: 0;">
-                            <span>MeteoFrance Arpege</span>
-                        </label>
-
+                    <div class="model-selection" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamic model checkboxes will be inserted here -->
                     </div>
                 </div>
                 
@@ -338,11 +306,138 @@
             precipUnit: 'mm',
             timeFormat: '12h',
             showSeconds: false,
-            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world']
+            selectedModels: [] // Will be populated dynamically
         };
         
-        // Real weather models available in Open-Meteo API (working models only)
-        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world'];
+        // All available weather models in Open-Meteo API
+        const ALL_WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless'];
+        
+        // This will be populated dynamically based on what models actually return different data
+        let WEATHER_MODELS = [];
+        
+        async function detectAvailableModels(latitude, longitude) {
+            try {
+                console.log('Detecting available models...');
+                
+                // Fetch data from all models
+                const modelsParam = ALL_WEATHER_MODELS.join(',');
+                const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&models=${modelsParam}&forecast_days=1&apikey=${API_KEY}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Model detection response:', data);
+                
+                // Check which models returned data
+                const availableModels = [];
+                const modelData = {};
+                
+                ALL_WEATHER_MODELS.forEach(model => {
+                    const tempKey = `temperature_2m_${model}`;
+                    if (data.hourly[tempKey] && data.hourly[tempKey].length > 0) {
+                        availableModels.push(model);
+                        modelData[model] = data.hourly[tempKey];
+                    }
+                });
+                
+                console.log('Available models:', availableModels);
+                
+                // Check for models with identical data (remove duplicates)
+                const uniqueModels = [];
+                const dataSignatures = new Map();
+                
+                availableModels.forEach(model => {
+                    const data = modelData[model];
+                    const signature = JSON.stringify(data);
+                    
+                    if (!dataSignatures.has(signature)) {
+                        dataSignatures.set(signature, model);
+                        uniqueModels.push(model);
+                        console.log(`Added unique model: ${model}`);
+                    } else {
+                        console.log(`Skipping duplicate model: ${model} (same as ${dataSignatures.get(signature)})`);
+                    }
+                });
+                
+                WEATHER_MODELS = uniqueModels;
+                console.log('Final working models:', WEATHER_MODELS);
+                
+                // Update the UI to show only working models
+                updateModelCheckboxes();
+                updateModelLegend();
+                
+            } catch (error) {
+                console.error('Error detecting models:', error);
+                // Fallback to default models
+                WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world'];
+            }
+        }
+        
+        function updateModelCheckboxes() {
+            const modelCheckboxContainer = document.querySelector('.model-selection');
+            if (!modelCheckboxContainer) return;
+            
+            // Clear existing checkboxes
+            modelCheckboxContainer.innerHTML = '';
+            
+            // Add checkboxes for working models only
+            WEATHER_MODELS.forEach(model => {
+                const label = document.createElement('label');
+                label.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `model-${model.replace(/_/g, '-')}`;
+                checkbox.checked = true;
+                checkbox.style.margin = '0';
+                
+                const span = document.createElement('span');
+                span.textContent = getModelDisplayName(model);
+                
+                label.appendChild(checkbox);
+                label.appendChild(span);
+                modelCheckboxContainer.appendChild(label);
+            });
+        }
+        
+        function getModelDisplayName(model) {
+            const names = {
+                'icon_seamless': 'ICON Seamless',
+                'ecmwf_ifs025': 'ECMWF IFS025',
+                'gfs_graphcast025': 'GFS GraphCast025',
+                'meteofrance_arpege_world': 'MeteoFrance Arpege',
+                'meteofrance_arome_france': 'MeteoFrance Arome',
+                'metno_seamless': 'MetNo Seamless'
+            };
+            return names[model] || model;
+        }
+        
+        function updateModelLegend() {
+            const legendContainer = document.getElementById('model-legend');
+            if (!legendContainer) return;
+            
+            // Clear existing legend
+            legendContainer.innerHTML = '';
+            
+            // Add legend items for working models only
+            WEATHER_MODELS.forEach(model => {
+                const legendItem = document.createElement('div');
+                legendItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;';
+                
+                const colorBox = document.createElement('div');
+                colorBox.style.cssText = `width: 20px; height: 20px; background-color: ${MODEL_COLORS[model]}; border-radius: 4px;`;
+                
+                const label = document.createElement('span');
+                label.style.cssText = 'font-weight: 600; color: #2c3e50;';
+                label.textContent = getModelDisplayName(model);
+                
+                legendItem.appendChild(colorBox);
+                legendItem.appendChild(label);
+                legendContainer.appendChild(legendItem);
+            });
+        }
         
         const MODEL_COLORS = {
             'icon_seamless': '#FF6B6B',
@@ -378,8 +473,11 @@
                 const latitude = parseFloat(coordinates[0]);
                 const longitude = parseFloat(coordinates[1]);
                 
-                // Fetch real weather data from all selected models
-                const modelsParam = settings.selectedModels.join(',');
+                // First, detect which models are available and have different data
+                await detectAvailableModels(latitude, longitude);
+                
+                // Fetch real weather data from available models
+                const modelsParam = WEATHER_MODELS.join(',');
                 const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${modelsParam}&forecast_days=7&apikey=${API_KEY}`);
                 
                 if (!response.ok) {
@@ -390,7 +488,7 @@
                 console.log('Received weather data:', data);
                 
                 // Process real data from each model
-                const allModelData = settings.selectedModels.map(model => {
+                const allModelData = WEATHER_MODELS.map(model => {
                     // Extract data for this specific model
                     const modelData = {
                         model: model,
@@ -442,7 +540,7 @@
                 cloudCover: {}
             };
             
-            // Initialize data structure
+            // Initialize data structure for available models
             WEATHER_MODELS.forEach(model => {
                 processedData.temperature[model] = [];
                 processedData.precipitation[model] = [];
@@ -501,7 +599,7 @@
             // Create datasets for each model
             const createDatasets = (data) => {
                 return WEATHER_MODELS.map(model => ({
-                    label: model.replace(/_/g, ' ').toUpperCase(),
+                    label: getModelDisplayName(model).toUpperCase(),
                     data: data[model],
                     borderColor: MODEL_COLORS[model],
                     backgroundColor: MODEL_COLORS[model] + '20',
@@ -836,17 +934,12 @@
             const timeFormat = document.querySelector('input[name="timeFormat"]:checked').value;
             const showSeconds = document.getElementById('showSeconds').checked;
             
-            // Get selected models
+            // Get selected models from dynamic checkboxes
             const selectedModels = [];
-            const modelCheckboxes = [
-                { id: 'model-icon', model: 'icon_seamless' },
-                { id: 'model-ecmwf', model: 'ecmwf_ifs025' },
-                { id: 'model-gfs', model: 'gfs_graphcast025' },
-                { id: 'model-arpege', model: 'meteofrance_arpege_world' }
-            ];
-            
-            modelCheckboxes.forEach(({ id, model }) => {
-                if (document.getElementById(id).checked) {
+            WEATHER_MODELS.forEach(model => {
+                const checkboxId = `model-${model.replace(/_/g, '-')}`;
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox && checkbox.checked) {
                     selectedModels.push(model);
                 }
             });
@@ -857,7 +950,7 @@
                 precipUnit,
                 timeFormat,
                 showSeconds,
-                selectedModels
+                selectedModels: WEATHER_MODELS // Use all available models
             };
             
             console.log('Applied settings:', settings);
