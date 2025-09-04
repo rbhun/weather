@@ -49,6 +49,21 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             height: 400px;
             overflow: hidden;
+            position: relative;
+        }
+        
+        /* Night-time overlay for charts */
+        .night-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(135, 206, 250, 0.1);
+            pointer-events: none;
+            z-index: 1;
+            border-radius: 10px;
+            display: none;
         }
         .chart-section h2 {
             text-align: center;
@@ -832,8 +847,8 @@
         }
         
         // Create datasets for each model (only available ones)
-        const createDatasets = (data, labels) => {
-            const datasets = WEATHER_MODELS.map(model => {
+        const createDatasets = (data) => {
+            return WEATHER_MODELS.map(model => {
                 // Check if model has data
                 const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
                 
@@ -849,28 +864,6 @@
                     pointRadius: hasData ? 3 : 0
                 };
             }).filter(dataset => dataset.data.length > 0); // Only include models with data
-            
-            // Add night-time background dataset
-            if (labels && labels.length > 0) {
-                const nightBackgroundData = labels.map(label => {
-                    return isNightTime(label) ? 100 : null; // Use 100 as background height
-                });
-                
-                datasets.unshift({
-                    label: 'Night Time',
-                    data: nightBackgroundData,
-                    backgroundColor: 'rgba(135, 206, 250, 0.1)',
-                    borderColor: 'rgba(135, 206, 250, 0.3)',
-                    borderWidth: 0,
-                    fill: true,
-                    tension: 0,
-                    pointRadius: 0,
-                    order: -1, // Draw behind other datasets
-                    yAxisID: 'y'
-                });
-            }
-            
-            return datasets;
         };
             
                     // Common chart configuration
@@ -926,7 +919,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.temperature, processedData.labels)
+                    datasets: createDatasets(processedData.temperature)
                 },
                 options: {
                     ...chartConfig.options,
@@ -950,7 +943,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.precipitation, processedData.labels)
+                    datasets: createDatasets(processedData.precipitation)
                 },
                 options: {
                     ...chartConfig.options,
@@ -973,7 +966,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.precipitationProb, processedData.labels)
+                    datasets: createDatasets(processedData.precipitationProb)
                 },
                 options: {
                     ...chartConfig.options,
@@ -998,7 +991,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.cloudCover, processedData.labels)
+                    datasets: createDatasets(processedData.cloudCover)
                 },
                 options: {
                     ...chartConfig.options,
@@ -1014,6 +1007,35 @@
                             max: 100
                         }
                     }
+                }
+            });
+            
+            // Add night-time overlays to charts
+            addNightTimeOverlays(processedData.labels);
+        }
+        
+        function addNightTimeOverlays(labels) {
+            const chartSections = document.querySelectorAll('.chart-section');
+            
+            chartSections.forEach(section => {
+                // Remove existing overlays
+                const existingOverlay = section.querySelector('.night-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+                
+                // Create new overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'night-overlay';
+                section.appendChild(overlay);
+                
+                // Check if current time is night
+                const now = new Date();
+                const currentHour = now.getHours();
+                const isCurrentlyNight = currentHour >= 21 || currentHour < 6;
+                
+                if (isCurrentlyNight) {
+                    overlay.style.display = 'block';
                 }
             });
         }
