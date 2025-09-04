@@ -824,25 +824,54 @@
                 }
             });
             
-            // Create datasets for each model (only available ones)
-            const createDatasets = (data) => {
-                return WEATHER_MODELS.map(model => {
-                    // Check if model has data
-                    const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
-                    
-                    return {
-                        label: model.replace(/_/g, ' ').toUpperCase(),
-                        data: hasData ? data[model] : [],
-                        borderColor: MODEL_COLORS[model],
-                        backgroundColor: MODEL_COLORS[model] + '20',
-                        borderWidth: hasData ? 2 : 1,
-                        fill: false,
-                        tension: 0.4,
-                        hidden: !hasData, // Hide models without data
-                        pointRadius: hasData ? 3 : 0
-                    };
-                }).filter(dataset => dataset.data.length > 0); // Only include models with data
-            };
+                    // Function to determine if a time is during night hours (9 PM - 6 AM)
+        function isNightTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            const hour = date.getHours();
+            return hour >= 21 || hour < 6; // 9 PM to 6 AM
+        }
+        
+        // Create datasets for each model (only available ones)
+        const createDatasets = (data, labels) => {
+            const datasets = WEATHER_MODELS.map(model => {
+                // Check if model has data
+                const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
+                
+                return {
+                    label: model.replace(/_/g, ' ').toUpperCase(),
+                    data: hasData ? data[model] : [],
+                    borderColor: MODEL_COLORS[model],
+                    backgroundColor: MODEL_COLORS[model] + '20',
+                    borderWidth: hasData ? 2 : 1,
+                    fill: false,
+                    tension: 0.4,
+                    hidden: !hasData, // Hide models without data
+                    pointRadius: hasData ? 3 : 0
+                };
+            }).filter(dataset => dataset.data.length > 0); // Only include models with data
+            
+            // Add night-time background dataset
+            if (labels && labels.length > 0) {
+                const nightBackgroundData = labels.map(label => {
+                    return isNightTime(label) ? 100 : null; // Use 100 as background height
+                });
+                
+                datasets.unshift({
+                    label: 'Night Time',
+                    data: nightBackgroundData,
+                    backgroundColor: 'rgba(135, 206, 250, 0.1)',
+                    borderColor: 'rgba(135, 206, 250, 0.3)',
+                    borderWidth: 0,
+                    fill: true,
+                    tension: 0,
+                    pointRadius: 0,
+                    order: -1, // Draw behind other datasets
+                    yAxisID: 'y'
+                });
+            }
+            
+            return datasets;
+        };
             
                     // Common chart configuration
         const chartConfig = {
@@ -897,7 +926,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.temperature)
+                    datasets: createDatasets(processedData.temperature, processedData.labels)
                 },
                 options: {
                     ...chartConfig.options,
@@ -921,7 +950,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.precipitation)
+                    datasets: createDatasets(processedData.precipitation, processedData.labels)
                 },
                 options: {
                     ...chartConfig.options,
@@ -944,7 +973,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.precipitationProb)
+                    datasets: createDatasets(processedData.precipitationProb, processedData.labels)
                 },
                 options: {
                     ...chartConfig.options,
@@ -969,7 +998,7 @@
                 ...chartConfig,
                 data: {
                     labels: processedData.labels,
-                    datasets: createDatasets(processedData.cloudCover)
+                    datasets: createDatasets(processedData.cloudCover, processedData.labels)
                 },
                 options: {
                     ...chartConfig.options,
