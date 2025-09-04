@@ -486,9 +486,9 @@
                         const date = new Date(time);
                         const hour = date.getHours();
                         
-                        // Only show 9AM and 9PM for each day
+                        // Only show labels for 9AM and 9PM, but keep all data points
                         if (hour !== 9 && hour !== 21) {
-                            return null; // Skip other hours
+                            return ''; // Empty string for other hours (will be hidden by Chart.js)
                         }
                         
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -509,30 +509,14 @@
                         const timeStr = date.toLocaleTimeString('en-US', timeOptions);
                         
                         return `${dateStr}\n${dayName}\n${timeStr}`;
-                    }).filter(label => label !== null); // Remove null entries
+                    });
                 }
                 
-                // Extract data for each variable (only 9AM and 9PM)
-                processedData.temperature[model] = hourlyData.temperature_2m.filter((temp, index) => {
-                    const date = new Date(hourlyData.time[index]);
-                    const hour = date.getHours();
-                    return hour === 9 || hour === 21;
-                });
-                processedData.precipitation[model] = hourlyData.precipitation.filter((precip, index) => {
-                    const date = new Date(hourlyData.time[index]);
-                    const hour = date.getHours();
-                    return hour === 9 || hour === 21;
-                });
-                processedData.precipitationProb[model] = hourlyData.precipitation_probability.filter((prob, index) => {
-                    const date = new Date(hourlyData.time[index]);
-                    const hour = date.getHours();
-                    return hour === 9 || hour === 21;
-                }).map(prob => prob === null ? 0 : prob); // Handle null values
-                processedData.cloudCover[model] = hourlyData.cloudcover.filter((cloud, index) => {
-                    const date = new Date(hourlyData.time[index]);
-                    const hour = date.getHours();
-                    return hour === 9 || hour === 21;
-                });
+                // Extract data for each variable (all hourly data)
+                processedData.temperature[model] = hourlyData.temperature_2m;
+                processedData.precipitation[model] = hourlyData.precipitation;
+                processedData.precipitationProb[model] = hourlyData.precipitation_probability.map(prob => prob === null ? 0 : prob); // Handle null values
+                processedData.cloudCover[model] = hourlyData.cloudcover;
             });
             
             return processedData;
@@ -582,10 +566,14 @@
                                 text: 'Date & Time'
                             },
                             ticks: {
-                                maxTicksLimit: 14, // Allow more ticks since we have fewer data points
+                                maxTicksLimit: 14, // Show only 9AM and 9PM labels
                                 callback: function(value, index, values) {
                                     const label = this.getLabelForValue(value);
-                                    return label.split('\n');
+                                    // Only show labels that are not empty (9AM and 9PM)
+                                    if (label && label.trim() !== '') {
+                                        return label.split('\n');
+                                    }
+                                    return ''; // Hide other labels
                                 }
                             }
                         },
