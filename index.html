@@ -111,6 +111,7 @@
                     <input type="text" id="newLocationInput" placeholder="Add location (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
                     <input type="text" id="newLocationName" placeholder="Location name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
                     <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
+                    <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
                 </div>
             </div>
             
@@ -368,6 +369,7 @@
         
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
+            loadCustomLocations(); // Load saved custom locations
             loadWeatherData();
             loadSunTimes();
             
@@ -716,6 +718,9 @@
             option.textContent = name;
             locationSelect.appendChild(option);
             
+            // Save to localStorage
+            saveCustomLocations();
+            
             // Clear input fields
             coordinatesInput.value = '';
             nameInput.value = '';
@@ -725,6 +730,64 @@
             loadWeatherData();
             
             console.log('Added new location:', name, coordinates);
+        }
+        
+        function saveCustomLocations() {
+            const locationSelect = document.getElementById('locationSelect');
+            const customLocations = [];
+            
+            // Get all options except the first one (default location)
+            for (let i = 1; i < locationSelect.options.length; i++) {
+                const option = locationSelect.options[i];
+                customLocations.push({
+                    name: option.textContent,
+                    coordinates: option.value
+                });
+            }
+            
+            localStorage.setItem('customLocations', JSON.stringify(customLocations));
+        }
+        
+        function loadCustomLocations() {
+            const locationSelect = document.getElementById('locationSelect');
+            const savedLocations = localStorage.getItem('customLocations');
+            
+            if (savedLocations) {
+                try {
+                    const customLocations = JSON.parse(savedLocations);
+                    
+                    // Clear existing custom locations (keep the first default one)
+                    while (locationSelect.options.length > 1) {
+                        locationSelect.remove(1);
+                    }
+                    
+                    // Add saved custom locations
+                    customLocations.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.coordinates;
+                        option.textContent = location.name;
+                        locationSelect.appendChild(option);
+                    });
+                    
+                    console.log('Loaded custom locations:', customLocations.length);
+                } catch (error) {
+                    console.error('Error loading custom locations:', error);
+                }
+            }
+        }
+        
+        function removeCustomLocation() {
+            const locationSelect = document.getElementById('locationSelect');
+            const selectedIndex = locationSelect.selectedIndex;
+            
+            // Don't allow removing the default location (index 0)
+            if (selectedIndex > 0) {
+                locationSelect.remove(selectedIndex);
+                saveCustomLocations();
+                console.log('Removed custom location');
+            } else {
+                alert('Cannot remove the default location');
+            }
         }
         
         async function loadSunTimes() {
