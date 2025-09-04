@@ -101,49 +101,52 @@
         </div>
         
         <div style="text-align: center; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
-                <label for="locationSelect" style="font-weight: 600; color: #34495e;">Select Location:</label>
-                <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px;">
-                    <option value="47.4979,19.0402">Origo Studios, Hungary</option>
-                </select>
-                
+            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                 <!-- Manual Refresh Button -->
                 <button onclick="refreshWeatherData()" style="padding: 8px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
                     🔄 Refresh
                 </button>
                 
                 <!-- Auto-refresh Status -->
-                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e0e6ed;">
-                    <span style="font-size: 12px; color: #666;">Auto-refresh:</span>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e0e6ed;">
+                    <span style="font-size: 12px; color: #666;">Auto:</span>
                     <span id="autoRefreshStatus" style="font-size: 12px; color: #27ae60; font-weight: 600;">30 min</span>
                 </div>
-            </div>
-            
-            <!-- Location Management Row -->
-            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                
+                <!-- Location Selector -->
+                <label for="locationSelect" style="font-weight: 600; color: #34495e;">Location:</label>
+                <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px;">
+                    <option value="47.4979,19.0402">Origo Studios, Hungary</option>
+                </select>
+                
+                <!-- Location Search -->
                 <div style="position: relative;">
-                    <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 250px;" onkeyup="searchLocations(event)">
+                    <input type="text" id="locationSearchInput" placeholder="Search location..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;" onkeyup="searchLocations(event)">
                     <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
                 </div>
-                <input type="text" id="newLocationInput" placeholder="Or enter coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
-                <input type="text" id="newLocationName" placeholder="Custom name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
+                
+                <!-- Coordinates Input -->
+                <input type="text" id="newLocationInput" placeholder="Coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 180px;">
+                
+                <!-- Location Name -->
+                <input type="text" id="newLocationName" placeholder="Name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 120px;">
+                
+                <!-- Add/Remove Buttons -->
                 <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
                 <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
-            </div>
-            
-            <!-- Sun Times Row -->
-            <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight: 600; color: #2c3e50;">🌅 Sunrise:</span>
-                    <span id="sunriseTime" style="color: #666; font-weight: 500;">Loading...</span>
+                
+                <!-- Sun Times -->
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e0e6ed;">
+                    <span style="font-size: 12px; color: #666;">🌅</span>
+                    <span id="sunriseTime" style="font-size: 12px; color: #666; font-weight: 500;">Loading...</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight: 600; color: #2c3e50;">🌇 Sunset:</span>
-                    <span id="sunsetTime" style="color: #666; font-weight: 500;">Loading...</span>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e0e6ed;">
+                    <span style="font-size: 12px; color: #666;">🌇</span>
+                    <span id="sunsetTime" style="font-size: 12px; color: #666; font-weight: 500;">Loading...</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight: 600; color: #2c3e50;">⏱️ Day Length:</span>
-                    <span id="dayLength" style="color: #666; font-weight: 500;">Loading...</span>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #e0e6ed;">
+                    <span style="font-size: 12px; color: #666;">⏱️</span>
+                    <span id="dayLength" style="font-size: 12px; color: #666; font-weight: 500;">Loading...</span>
                 </div>
             </div>
         </div>
