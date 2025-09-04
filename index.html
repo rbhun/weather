@@ -319,6 +319,9 @@
             try {
                 console.log('Detecting available models...');
                 
+                // Show loading message
+                showModelDetectionLoading();
+                
                 // Fetch data from all models
                 const modelsParam = ALL_WEATHER_MODELS.join(',');
                 const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&models=${modelsParam}&forecast_days=1&apikey=${API_KEY}`);
@@ -363,6 +366,9 @@
                 
                 WEATHER_MODELS = uniqueModels;
                 console.log('Final working models:', WEATHER_MODELS);
+                
+                // Show status message to user
+                showModelDetectionStatus(availableModels, uniqueModels);
                 
                 // Update the UI to show only working models
                 updateModelCheckboxes();
@@ -437,6 +443,66 @@
                 legendItem.appendChild(label);
                 legendContainer.appendChild(legendItem);
             });
+        }
+        
+        function showModelDetectionLoading() {
+            // Create or update loading message
+            let statusDiv = document.getElementById('model-status');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'model-status';
+                statusDiv.style.cssText = 'background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0; color: #856404;';
+                
+                // Insert after the model selection section
+                const modelSection = document.querySelector('.model-selection').closest('div');
+                modelSection.parentNode.insertBefore(statusDiv, modelSection.nextSibling);
+            }
+            
+            statusDiv.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px;">🔍 Detecting available weather models...</div>
+                <div style="font-size: 0.9rem; color: #6c757d;">
+                    Testing all ${ALL_WEATHER_MODELS.length} models for this location to find unique data sources...
+                </div>
+            `;
+        }
+        
+        function showModelDetectionStatus(availableModels, uniqueModels) {
+            // Create or update status message
+            let statusDiv = document.getElementById('model-status');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'model-status';
+                statusDiv.style.cssText = 'background: #e8f4fd; border: 1px solid #bee5eb; border-radius: 8px; padding: 15px; margin: 15px 0; color: #0c5460;';
+                
+                // Insert after the model selection section
+                const modelSection = document.querySelector('.model-selection').closest('div');
+                modelSection.parentNode.insertBefore(statusDiv, modelSection.nextSibling);
+            }
+            
+            const totalModels = ALL_WEATHER_MODELS.length;
+            const availableCount = availableModels.length;
+            const uniqueCount = uniqueModels.length;
+            const duplicateCount = availableCount - uniqueCount;
+            const unavailableCount = totalModels - availableCount;
+            
+            let statusText = `🔍 Model Detection Results: `;
+            statusText += `${uniqueCount} unique models active`;
+            
+            if (duplicateCount > 0) {
+                statusText += `, ${duplicateCount} duplicates removed`;
+            }
+            if (unavailableCount > 0) {
+                statusText += `, ${unavailableCount} unavailable`;
+            }
+            
+            statusDiv.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 8px;">${statusText}</div>
+                <div style="font-size: 0.9rem; color: #6c757d;">
+                    <strong>Active:</strong> ${uniqueModels.map(m => getModelDisplayName(m)).join(', ')}<br>
+                    ${duplicateCount > 0 ? `<strong>Duplicates removed:</strong> ${availableModels.filter(m => !uniqueModels.includes(m)).map(m => getModelDisplayName(m)).join(', ')}<br>` : ''}
+                    ${unavailableCount > 0 ? `<strong>Unavailable:</strong> ${ALL_WEATHER_MODELS.filter(m => !availableModels.includes(m)).map(m => getModelDisplayName(m)).join(', ')}` : ''}
+                </div>
+            `;
         }
         
         const MODEL_COLORS = {
