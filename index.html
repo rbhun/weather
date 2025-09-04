@@ -486,9 +486,15 @@
                     // Store original time data for callback access
                     processedData.timeData = hourlyData.time;
                     
+                    // Create labels array with only 9AM and 9PM labels
                     processedData.labels = hourlyData.time.map((time, index) => {
                         const date = new Date(time);
                         const hour = date.getHours();
+                        
+                        // Only create labels for 9AM and 9PM
+                        if (hour !== 9 && hour !== 21) {
+                            return ''; // Empty string for other hours
+                        }
                         
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                         const dateStr = date.toLocaleDateString('en-US', { 
@@ -565,18 +571,7 @@
                                 text: 'Date & Time'
                             },
                             ticks: {
-                                maxTicksLimit: 14, // Show only 9AM and 9PM labels
-                                callback: function(value, index, values) {
-                                    const label = this.getLabelForValue(value);
-                                    const date = new Date(processedData.timeData[index]);
-                                    const hour = date.getHours();
-                                    
-                                    // Only show labels for 9AM and 9PM
-                                    if (hour === 9 || hour === 21) {
-                                        return label.split('\n');
-                                    }
-                                    return ''; // Hide other labels
-                                }
+                                maxTicksLimit: 14 // Show only 9AM and 9PM labels
                             }
                         },
                         y: {
