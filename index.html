@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Model Comparison Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -168,6 +170,15 @@
             
             <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
                 <h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">Weather Models Legend</h3>
+                
+                <!-- Night Time Indicator -->
+                <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: white; border-radius: 8px; border: 2px solid rgba(135, 206, 250, 0.3);">
+                        <div style="width: 20px; height: 20px; background-color: rgba(135, 206, 250, 0.1); border-radius: 4px; border: 1px solid rgba(135, 206, 250, 0.3);"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">🌙 Night Time (9 PM - 6 AM)</span>
+                    </div>
+                </div>
+                
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #FF6B6B; border-radius: 4px;"></div>
@@ -397,6 +408,9 @@
     </div>
 
     <script>
+        // Register Chart.js annotation plugin
+        Chart.register(ChartAnnotation);
+        
         const API_KEY = 'Xud6pUlHyBw0pmUE';
         const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
         
@@ -834,67 +848,119 @@
                 }).filter(dataset => dataset.data.length > 0); // Only include models with data
             };
             
-            // Common chart configuration
-            const chartConfig = {
-                type: 'line',
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
+                    // Function to determine if a time is during night hours (9 PM - 6 AM)
+        function isNightTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            const hour = date.getHours();
+            return hour >= 21 || hour < 6; // 9 PM to 6 AM
+        }
+        
+        // Function to create night-time background annotations
+        function createNightTimeAnnotations(labels) {
+            const annotations = [];
+            let nightStart = null;
+            
+            for (let i = 0; i < labels.length; i++) {
+                const isNight = isNightTime(labels[i]);
+                
+                if (isNight && nightStart === null) {
+                    // Start of night period
+                    nightStart = i;
+                } else if (!isNight && nightStart !== null) {
+                    // End of night period
+                    annotations.push({
+                        type: 'box',
+                        xMin: nightStart,
+                        xMax: i - 1,
+                        backgroundColor: 'rgba(135, 206, 250, 0.1)', // Light blue tint
+                        borderColor: 'rgba(135, 206, 250, 0.3)',
+                        borderWidth: 1,
+                        drawTime: 'beforeDatasetsDraw'
+                    });
+                    nightStart = null;
+                }
+            }
+            
+            // Handle case where night period extends to end of data
+            if (nightStart !== null) {
+                annotations.push({
+                    type: 'box',
+                    xMin: nightStart,
+                    xMax: labels.length - 1,
+                    backgroundColor: 'rgba(135, 206, 250, 0.1)',
+                    borderColor: 'rgba(135, 206, 250, 0.3)',
+                    borderWidth: 1,
+                    drawTime: 'beforeDatasetsDraw'
+                });
+            }
+            
+            return annotations;
+        }
+        
+        // Common chart configuration
+        const chartConfig = (labels) => ({
+            type: 'line',
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    annotation: {
+                        annotations: createNightTimeAnnotations(labels)
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Date & Time'
                         },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false
+                        ticks: {
+                            maxTicksLimit: 8,
+                            callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label.split('\n');
+                            }
                         }
                     },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Date & Time'
-                            },
-                            ticks: {
-                                maxTicksLimit: 8,
-                                callback: function(value, index, values) {
-                                    const label = this.getLabelForValue(value);
-                                    return label.split('\n');
-                                }
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.1)'
-                            }
-                        }
-                    },
-                    layout: {
-                        padding: {
-                            top: 10,
-                            bottom: 10
+                    y: {
+                        display: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
                         }
                     }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
+                    }
                 }
-            };
+            }
+        });
             
             // Temperature Chart
             const tempCtx = document.getElementById('temperatureChart').getContext('2d');
             const tempUnit = settings.tempUnit === 'fahrenheit' ? '°F' : '°C';
             charts.temperature = new Chart(tempCtx, {
-                ...chartConfig,
+                ...chartConfig(processedData.labels),
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.temperature)
                 },
                 options: {
-                    ...chartConfig.options,
+                    ...chartConfig(processedData.labels).options,
                     scales: {
-                        ...chartConfig.options.scales,
+                        ...chartConfig(processedData.labels).options.scales,
                         y: {
-                            ...chartConfig.options.scales.y,
+                            ...chartConfig(processedData.labels).options.scales.y,
                             title: {
                                 display: true,
                                 text: `Temperature (${tempUnit})`
@@ -908,17 +974,17 @@
             const precipCtx = document.getElementById('precipitationChart').getContext('2d');
             const precipUnit = settings.precipUnit === 'inches' ? 'in' : 'mm';
             charts.precipitation = new Chart(precipCtx, {
-                ...chartConfig,
+                ...chartConfig(processedData.labels),
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.precipitation)
                 },
                 options: {
-                    ...chartConfig.options,
+                    ...chartConfig(processedData.labels).options,
                     scales: {
-                        ...chartConfig.options.scales,
+                        ...chartConfig(processedData.labels).options.scales,
                         y: {
-                            ...chartConfig.options.scales.y,
+                            ...chartConfig(processedData.labels).options.scales.y,
                             title: {
                                 display: true,
                                 text: `Precipitation (${precipUnit})`
@@ -931,17 +997,17 @@
             // Precipitation Probability Chart
             const precipProbCtx = document.getElementById('precipitationProbChart').getContext('2d');
             charts.precipitationProb = new Chart(precipProbCtx, {
-                ...chartConfig,
+                ...chartConfig(processedData.labels),
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.precipitationProb)
                 },
                 options: {
-                    ...chartConfig.options,
+                    ...chartConfig(processedData.labels).options,
                     scales: {
-                        ...chartConfig.options.scales,
+                        ...chartConfig(processedData.labels).options.scales,
                         y: {
-                            ...chartConfig.options.scales.y,
+                            ...chartConfig(processedData.labels).options.scales.y,
                             title: {
                                 display: true,
                                 text: 'Probability (%)'
@@ -956,17 +1022,17 @@
             // Cloud Cover Chart
             const cloudCtx = document.getElementById('cloudCoverChart').getContext('2d');
             charts.cloudCover = new Chart(cloudCtx, {
-                ...chartConfig,
+                ...chartConfig(processedData.labels),
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.cloudCover)
                 },
                 options: {
-                    ...chartConfig.options,
+                    ...chartConfig(processedData.labels).options,
                     scales: {
-                        ...chartConfig.options.scales,
+                        ...chartConfig(processedData.labels).options.scales,
                         y: {
-                            ...chartConfig.options.scales.y,
+                            ...chartConfig(processedData.labels).options.scales.y,
                             title: {
                                 display: true,
                                 text: 'Cloud Cover (%)'
