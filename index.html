@@ -461,7 +461,7 @@
         function processWeatherData(allModelData) {
             const processedData = {
                 labels: [],
-                displayLabels: [], // Separate array for display labels
+                timeData: [], // Store original time data for callback access
                 temperature: {},
                 precipitation: {},
                 precipitationProb: {},
@@ -483,6 +483,9 @@
                 
                 // Generate labels for the first model only
                 if (processedData.labels.length === 0) {
+                    // Store original time data for callback access
+                    processedData.timeData = hourlyData.time;
+                    
                     processedData.labels = hourlyData.time.map((time, index) => {
                         const date = new Date(time);
                         const hour = date.getHours();
@@ -565,7 +568,7 @@
                                 maxTicksLimit: 14, // Show only 9AM and 9PM labels
                                 callback: function(value, index, values) {
                                     const label = this.getLabelForValue(value);
-                                    const date = new Date(hourlyData.time[index]);
+                                    const date = new Date(processedData.timeData[index]);
                                     const hour = date.getHours();
                                     
                                     // Only show labels for 9AM and 9PM
