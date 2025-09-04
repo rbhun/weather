@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Weather Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .chart-section canvas {
+            height: 300px !important;
+            max-height: 300px !important;
+        }
+        
+        /* Ensure x-axis labels have enough space */
+        .chart-section {
+            padding-bottom: 40px;
+        }
+        .chart-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            height: 400px;
+            overflow: hidden;
+        }
+        .chart-section h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+            font-size: 18px;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">
+            <img src="logo.png" alt="Company Logo" style="height: 60px; width: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <h1>Weather Model Comparison Dashboard</h1>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <label for="locationSelect" style="font-weight: 600; color: #34495e;">Select Location:</label>
+                <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px;">
+                    <option value="47.4979,19.0402">Origo Studios, Hungary</option>
+                </select>
+                
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 250px;" onkeyup="searchLocations(event)">
+                        <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <input type="text" id="newLocationInput" placeholder="Or enter coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
+                    <input type="text" id="newLocationName" placeholder="Custom name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
+                    <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
+                    <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
+                </div>
+            </div>
+            
+            <!-- Sun Times Row -->
+            <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 600; color: #2c3e50;">🌅 Sunrise:</span>
+                    <span id="sunriseTime" style="color: #666; font-weight: 500;">Loading...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 600; color: #2c3e50;">🌇 Sunset:</span>
+                    <span id="sunsetTime" style="color: #666; font-weight: 500;">Loading...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 600; color: #2c3e50;">⏱️ Day Length:</span>
+                    <span id="dayLength" style="color: #666; font-weight: 500;">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading weather data...
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            Error loading weather data. Please try again.
+        </div>
+        
+        <div id="dashboard" style="display: none;">
+            <div class="chart-container">
+                <div class="chart-section">
+                    <h2>Temperature (°C)</h2>
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation (mm)</h2>
+                    <canvas id="precipitationChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Precipitation Probability (%)</h2>
+                    <canvas id="precipitationProbChart"></canvas>
+                </div>
+                
+                <div class="chart-section">
+                    <h2>Cloud Cover (%)</h2>
+                    <canvas id="cloudCoverChart"></canvas>
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
+                <h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">Weather Models Legend</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #FF6B6B; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">ICON Seamless</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #4ECDC4; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">ECMWF IFS025</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #45B7D1; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">GFS GraphCast025</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #96CEB4; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arpege</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #FFEAA7; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">MeteoFrance Arome</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #DDA0DD; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">MetNo Seamless</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #FF9F43; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">GFS Seamless</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
+                        <div style="width: 20px; height: 20px; background-color: #6C5CE7; border-radius: 4px;"></div>
+                        <span style="font-weight: 600; color: #2c3e50;">GEM Seamless</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Setup Section -->
+        <div style="background: white; border-radius: 15px; padding: 30px; margin-top: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+            <h2 style="text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 1.8rem;">Setup & Configuration</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px;">
+                
+                <!-- Units Configuration -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Units</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="tempUnit" value="celsius" checked style="margin: 0;">
+                            <span>Temperature: Celsius (°C)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="tempUnit" value="fahrenheit" style="margin: 0;">
+                            <span>Temperature: Fahrenheit (°F)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="precipUnit" value="mm" checked style="margin: 0;">
+                            <span>Precipitation: Millimeters (mm)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="precipUnit" value="inches" style="margin: 0;">
+                            <span>Precipitation: Inches (in)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Time Format Configuration -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Time Format</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="timeFormat" value="12h" checked style="margin: 0;">
+                            <span>12-hour format (AM/PM)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="timeFormat" value="24h" style="margin: 0;">
+                            <span>24-hour format</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="showSeconds" style="margin: 0;">
+                            <span>Show seconds in time</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Model Selection -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Weather Models</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-icon" checked style="margin: 0;">
+                            <span>ICON Seamless</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-ecmwf" checked style="margin: 0;">
+                            <span>ECMWF IFS025</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-gfs" checked style="margin: 0;">
+                            <span>GFS GraphCast025</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-arpege" checked style="margin: 0;">
+                            <span>MeteoFrance Arpege</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-arome" checked style="margin: 0;">
+                            <span>MeteoFrance Arome</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-metno" checked style="margin: 0;">
+                            <span>MetNo Seamless</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-gfs-seamless" checked style="margin: 0;">
+                            <span>GFS Seamless</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="model-gem-seamless" checked style="margin: 0;">
+                            <span>GEM Seamless</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Auto-Update Settings -->
+                <div style="background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">🔄 Auto-Update Settings</h3>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; color: #2c3e50;">
+                            <input type="checkbox" id="autoUpdateEnabled" checked style="margin: 0; width: 18px; height: 18px;">
+                            <span>Enable Auto-Updates</span>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="updateInterval" style="display: block; margin-bottom: 5px; font-weight: 500; color: #2c3e50;">Check for updates:</label>
+                        <select id="updateInterval" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
+                            <option value="60000">Every minute</option>
+                            <option value="300000">Every 5 minutes</option>
+                            <option value="900000">Every 15 minutes</option>
+                            <option value="3600000">Every hour</option>
+                            <option value="86400000" selected>Every day</option>
+                            <option value="604800000">Every week</option>
+                            <option value="custom">Custom time (2 AM daily)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="custom-time" style="display: none; margin-bottom: 15px;">
+                        <label for="customTime" style="display: block; margin-bottom: 5px; font-weight: 500; color: #2c3e50;">Custom check time:</label>
+                        <input type="time" id="customTime" value="02:00" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <button onclick="checkForUpdatesNow()" style="padding: 8px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500;">Check for Updates Now</button>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 255, 0.8); border-radius: 8px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.3);">
+                        <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                            <span style="font-weight: 500;">Last Check:</span>
+                            <span id="lastCheckTime" style="margin-left: 5px; color: #667eea; font-weight: 600;">Never</span>
+                        </div>
+                        <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                            <span style="font-weight: 500;">Last Update:</span>
+                            <span id="lastUpdateTime" style="margin-left: 5px; color: #667eea; font-weight: 600;">Never</span>
+                        </div>
+                        <div style="margin-bottom: 8px; font-size: 14px; color: #555;">
+                            <span style="font-weight: 500;">Current Version:</span>
+                            <span id="currentVersion" style="margin-left: 5px; color: #667eea; font-weight: 600;">1.0.0</span>
+                        </div>
+                        <div style="font-size: 14px; color: #555;">
+                            <span style="font-weight: 500;">Next Check:</span>
+                            <span id="nextCheckTime" style="margin-left: 5px; color: #667eea; font-weight: 600;">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+
+                
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="applySettings()" style="padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'Xud6pUlHyBw0pmUE';
+        const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
+        
+        let charts = {
+            temperature: null,
+            precipitation: null,
+            precipitationProb: null,
+            cloudCover: null
+        };
+        
+        // Settings configuration
+        let settings = {
+            tempUnit: 'celsius',
+            precipUnit: 'mm',
+            timeFormat: '12h',
+            showSeconds: false,
+            selectedModels: ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless', 'gfs_seamless', 'gem_seamless']
+        };
+        
+        // Real weather models available in Open-Meteo API
+        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless', 'gfs_seamless', 'gem_seamless'];
+        
+        const MODEL_COLORS = {
+            'icon_seamless': '#FF6B6B',
+            'ecmwf_ifs025': '#4ECDC4',
+            'gfs_graphcast025': '#45B7D1',
+            'meteofrance_arpege_world': '#96CEB4',
+            'meteofrance_arome_france': '#FFEAA7',
+            'metno_seamless': '#DDA0DD',
+            'gfs_seamless': '#FF9F43',
+            'gem_seamless': '#6C5CE7'
+        };
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomLocations(); // Load saved custom locations
+            loadWeatherData();
+            loadSunTimes();
+            
+            // Event listener for location change
+            document.getElementById('locationSelect').addEventListener('change', function() {
+                loadWeatherData();
+                loadSunTimes();
+            });
+        });
+        
+        async function loadWeatherData() {
+            showLoading();
+            hideError();
+            
+            try {
+                console.log('Starting weather data load...');
+                
+                // Get coordinates from location selector
+                const coordinates = document.getElementById('locationSelect').value.split(',');
+                const latitude = parseFloat(coordinates[0]);
+                const longitude = parseFloat(coordinates[1]);
+                
+                // Fetch real weather data from all selected models
+                const modelsParam = settings.selectedModels.join(',');
+                const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${modelsParam}&forecast_days=7&apikey=${API_KEY}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received weather data:', data);
+                
+                // Check model availability and validate data
+                const modelValidation = validateModelData(data, settings.selectedModels);
+                console.log('Model validation results:', modelValidation);
+                
+                // Process real data from each model
+                const allModelData = settings.selectedModels.map(model => {
+                    // Extract data for this specific model
+                    const modelData = {
+                        model: model,
+                        available: modelValidation.availableModels.includes(model),
+                        data: {
+                            ...data,
+                            hourly: {
+                                time: data.hourly.time,
+                                temperature_2m: data.hourly[`temperature_2m_${model}`] || data.hourly.temperature_2m,
+                                precipitation: data.hourly[`precipitation_${model}`] || data.hourly.precipitation,
+                                precipitation_probability: data.hourly[`precipitation_probability_${model}`] || data.hourly.precipitation_probability,
+                                cloudcover: data.hourly[`cloudcover_${model}`] || data.hourly.cloudcover
+                            }
+                        }
+                    };
+                    
+                    // Apply unit conversions if needed
+                    if (settings.tempUnit === 'fahrenheit') {
+                        modelData.data.hourly.temperature_2m = modelData.data.hourly.temperature_2m.map(temp => (temp * 9/5) + 32);
+                    }
+                    
+                    if (settings.precipUnit === 'inches') {
+                        modelData.data.hourly.precipitation = modelData.data.hourly.precipitation.map(precip => precip / 25.4);
+                    }
+                    
+                    return modelData;
+                });
+                
+                console.log('Processed model data:', allModelData.length, 'models');
+                console.log('Available models:', modelValidation.availableModels.length);
+                console.log('Unavailable models:', modelValidation.unavailableModels);
+                console.log('Duplicate models:', modelValidation.duplicateModels);
+                
+                // Process data for charts
+                const processedData = processWeatherData(allModelData);
+                displayCharts(processedData);
+                
+                // Show model status information
+                displayModelStatus(modelValidation);
+                
+                showDashboard();
+            } catch (error) {
+                console.error('Error loading weather data:', error);
+                console.error('API Key being used:', API_KEY);
+                console.error('API URL:', `${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,precipitation,precipitation_probability,cloudcover&models=${modelsParam}&forecast_days=7&apikey=${API_KEY}`);
+                showError();
+            }
+        }
+        
+        function validateModelData(data, requestedModels) {
+            const validation = {
+                availableModels: [],
+                unavailableModels: [],
+                duplicateModels: [],
+                dataQuality: {}
+            };
+            
+            // Check which models have data available
+            requestedModels.forEach(model => {
+                const hasTemperature = data.hourly[`temperature_2m_${model}`] !== undefined;
+                const hasPrecipitation = data.hourly[`precipitation_${model}`] !== undefined;
+                const hasPrecipProb = data.hourly[`precipitation_probability_${model}`] !== undefined;
+                const hasCloudCover = data.hourly[`cloudcover_${model}`] !== undefined;
+                
+                if (hasTemperature && hasPrecipitation && hasPrecipProb && hasCloudCover) {
+                    validation.availableModels.push(model);
+                    
+                    // Check data quality
+                    const tempData = data.hourly[`temperature_2m_${model}`];
+                    const hasValidData = tempData && tempData.length > 0 && tempData.every(val => val !== null && val !== undefined);
+                    validation.dataQuality[model] = {
+                        hasValidData: hasValidData,
+                        dataPoints: tempData ? tempData.length : 0
+                    };
+                } else {
+                    validation.unavailableModels.push({
+                        model: model,
+                        missing: {
+                            temperature: !hasTemperature,
+                            precipitation: !hasPrecipitation,
+                            precipitation_probability: !hasPrecipProb,
+                            cloudcover: !hasCloudCover
+                        }
+                    });
+                }
+            });
+            
+            // Check for duplicate data between models
+            if (validation.availableModels.length > 1) {
+                const tempData = {};
+                validation.availableModels.forEach(model => {
+                    tempData[model] = data.hourly[`temperature_2m_${model}`];
+                });
+                
+                // Compare temperature data between models
+                const modelPairs = [];
+                for (let i = 0; i < validation.availableModels.length; i++) {
+                    for (let j = i + 1; j < validation.availableModels.length; j++) {
+                        modelPairs.push([validation.availableModels[i], validation.availableModels[j]]);
+                    }
+                }
+                
+                modelPairs.forEach(([model1, model2]) => {
+                    const data1 = tempData[model1];
+                    const data2 = tempData[model2];
+                    
+                    if (data1 && data2 && data1.length === data2.length) {
+                        // Check if data is identical (allowing for small floating point differences)
+                        const isIdentical = data1.every((val, index) => {
+                            const diff = Math.abs(val - data2[index]);
+                            return diff < 0.001; // Allow 0.001°C difference
+                        });
+                        
+                        if (isIdentical) {
+                            validation.duplicateModels.push({
+                                models: [model1, model2],
+                                reason: 'Identical temperature data',
+                                similarity: 100
+                            });
+                        } else {
+                            // Calculate similarity percentage
+                            const totalDiff = data1.reduce((sum, val, index) => sum + Math.abs(val - data2[index]), 0);
+                            const avgDiff = totalDiff / data1.length;
+                            const similarity = Math.max(0, 100 - (avgDiff * 10)); // Rough similarity calculation
+                            
+                            if (similarity > 95) {
+                                validation.duplicateModels.push({
+                                    models: [model1, model2],
+                                    reason: 'Very similar data',
+                                    similarity: Math.round(similarity)
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+            
+            return validation;
+        }
+        
+        function displayModelStatus(validation) {
+            // Create or update model status display
+            let statusDiv = document.getElementById('modelStatus');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'modelStatus';
+                statusDiv.style.cssText = 'background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);';
+                document.getElementById('dashboard').appendChild(statusDiv);
+            }
+            
+            let statusHTML = '<h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">📊 Model Status & Data Quality</h3>';
+            
+            // Available models
+            statusHTML += '<div style="margin-bottom: 15px;">';
+            statusHTML += `<h4 style="color: #27ae60; margin-bottom: 10px;">✅ Available Models (${validation.availableModels.length})</h4>`;
+            statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+            validation.availableModels.forEach(model => {
+                const quality = validation.dataQuality[model];
+                const statusIcon = quality.hasValidData ? '✅' : '⚠️';
+                statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #27ae60;">${statusIcon} ${model.replace(/_/g, ' ').toUpperCase()}</div>`;
+            });
+            statusHTML += '</div></div>';
+            
+            // Unavailable models
+            if (validation.unavailableModels.length > 0) {
+                statusHTML += '<div style="margin-bottom: 15px;">';
+                statusHTML += `<h4 style="color: #e74c3c; margin-bottom: 10px;">❌ Unavailable Models (${validation.unavailableModels.length})</h4>`;
+                statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">';
+                validation.unavailableModels.forEach(item => {
+                    const missing = Object.entries(item.missing).filter(([key, value]) => value).map(([key]) => key).join(', ');
+                    statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #e74c3c;">❌ ${item.model.replace(/_/g, ' ').toUpperCase()}<br><small style="color: #666;">Missing: ${missing}</small></div>`;
+                });
+                statusHTML += '</div></div>';
+            }
+            
+            // Duplicate models
+            if (validation.duplicateModels.length > 0) {
+                statusHTML += '<div style="margin-bottom: 15px;">';
+                statusHTML += `<h4 style="color: #f39c12; margin-bottom: 10px;">⚠️ Similar/Duplicate Models (${validation.duplicateModels.length})</h4>`;
+                statusHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">';
+                validation.duplicateModels.forEach(item => {
+                    const models = item.models.map(m => m.replace(/_/g, ' ').toUpperCase()).join(' ↔ ');
+                    statusHTML += `<div style="padding: 8px; background: white; border-radius: 6px; border-left: 4px solid #f39c12;">⚠️ ${models}<br><small style="color: #666;">${item.reason} (${item.similarity}% similar)</small></div>`;
+                });
+                statusHTML += '</div></div>';
+            }
+            
+            statusDiv.innerHTML = statusHTML;
+        }
+        
+        function processWeatherData(allModelData) {
+            const processedData = {
+                labels: [],
+                temperature: {},
+                precipitation: {},
+                precipitationProb: {},
+                cloudCover: {}
+            };
+            
+            // Initialize data structure
+            WEATHER_MODELS.forEach(model => {
+                processedData.temperature[model] = [];
+                processedData.precipitation[model] = [];
+                processedData.precipitationProb[model] = [];
+                processedData.cloudCover[model] = [];
+            });
+            
+            // Process each model's data
+            allModelData.forEach(modelData => {
+                const model = modelData.model;
+                const hourlyData = modelData.data.hourly;
+                
+                // Generate labels for the first model only
+                if (processedData.labels.length === 0) {
+                    processedData.labels = hourlyData.time.map(time => {
+                        const date = new Date(time);
+                        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                        const dateStr = date.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric'
+                        });
+                        
+                        // Format time based on settings
+                        let timeOptions = { 
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: settings.timeFormat === '12h'
+                        };
+                        if (settings.showSeconds) {
+                            timeOptions.second = '2-digit';
+                        }
+                        const timeStr = date.toLocaleTimeString('en-US', timeOptions);
+                        
+                        return `${dateStr}\n${dayName}\n${timeStr}`;
+                    });
+                }
+                
+                // Extract data for each variable
+                processedData.temperature[model] = hourlyData.temperature_2m;
+                processedData.precipitation[model] = hourlyData.precipitation;
+                processedData.precipitationProb[model] = hourlyData.precipitation_probability;
+                processedData.cloudCover[model] = hourlyData.cloudcover;
+            });
+            
+            return processedData;
+        }
+        
+        function displayCharts(processedData) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) {
+                    chart.destroy();
+                }
+            });
+            
+            // Create datasets for each model (only available ones)
+            const createDatasets = (data) => {
+                return WEATHER_MODELS.map(model => {
+                    // Check if model has data
+                    const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
+                    
+                    return {
+                        label: model.replace(/_/g, ' ').toUpperCase(),
+                        data: hasData ? data[model] : [],
+                        borderColor: MODEL_COLORS[model],
+                        backgroundColor: MODEL_COLORS[model] + '20',
+                        borderWidth: hasData ? 2 : 1,
+                        fill: false,
+                        tension: 0.4,
+                        hidden: !hasData, // Hide models without data
+                        pointRadius: hasData ? 3 : 0
+                    };
+                }).filter(dataset => dataset.data.length > 0); // Only include models with data
+            };
+            
+            // Common chart configuration
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date & Time'
+                            },
+                            ticks: {
+                                maxTicksLimit: 8,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.split('\n');
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            };
+            
+            // Temperature Chart
+            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            const tempUnit = settings.tempUnit === 'fahrenheit' ? '°F' : '°C';
+            charts.temperature = new Chart(tempCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.temperature)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: `Temperature (${tempUnit})`
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Precipitation Chart
+            const precipCtx = document.getElementById('precipitationChart').getContext('2d');
+            const precipUnit = settings.precipUnit === 'inches' ? 'in' : 'mm';
+            charts.precipitation = new Chart(precipCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.precipitation)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: `Precipitation (${precipUnit})`
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Precipitation Probability Chart
+            const precipProbCtx = document.getElementById('precipitationProbChart').getContext('2d');
+            charts.precipitationProb = new Chart(precipProbCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.precipitationProb)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Probability (%)'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            
+            // Cloud Cover Chart
+            const cloudCtx = document.getElementById('cloudCoverChart').getContext('2d');
+            charts.cloudCover = new Chart(cloudCtx, {
+                ...chartConfig,
+                data: {
+                    labels: processedData.labels,
+                    datasets: createDatasets(processedData.cloudCover)
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        ...chartConfig.options.scales,
+                        y: {
+                            ...chartConfig.options.scales.y,
+                            title: {
+                                display: true,
+                                text: 'Cloud Cover (%)'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showDashboard() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showError() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        async function addLocation() {
+            const coordinatesInput = document.getElementById('newLocationInput');
+            const nameInput = document.getElementById('newLocationName');
+            const searchInput = document.getElementById('locationSearchInput');
+            const locationSelect = document.getElementById('locationSelect');
+            
+            let coordinates = coordinatesInput.value.trim();
+            let name = nameInput.value.trim();
+            
+            // If search input has content but coordinates don't, try to use search
+            if (searchInput.value.trim() && !coordinates) {
+                alert('Please select a location from the search suggestions or enter coordinates manually');
+                return;
+            }
+            
+            // Validate coordinates format (lat,lon)
+            const coordPattern = /^-?\d+\.?\d*,-?\d+\.?\d*$/;
+            if (!coordPattern.test(coordinates)) {
+                alert('Please enter coordinates in format: latitude,longitude (e.g., 40.7128,-74.0060) or search for a location by name');
+                return;
+            }
+            
+            if (!name) {
+                alert('Please enter a location name');
+                return;
+            }
+            
+            try {
+                // Save to server
+                const response = await fetch('/api/locations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        coordinates: coordinates
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Add new option to select
+                    const option = document.createElement('option');
+                    option.value = coordinates;
+                    option.textContent = name;
+                    option.dataset.locationId = result.data.id;
+                    locationSelect.appendChild(option);
+                    
+                    // Clear input fields
+                    coordinatesInput.value = '';
+                    nameInput.value = '';
+                    searchInput.value = '';
+                    hideSuggestions();
+                    
+                    // Select the new location and load data
+                    locationSelect.value = coordinates;
+                    loadWeatherData();
+                    
+                    console.log('Added new location to server:', name, coordinates);
+                } else {
+                    alert(`Failed to add location: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error adding location to server:', error);
+                alert('Error adding location to server');
+            }
+        }
+        
+        async function saveCustomLocations() {
+            const locationSelect = document.getElementById('locationSelect');
+            const customLocations = [];
+            
+            // Get all options except the first one (default location)
+            for (let i = 1; i < locationSelect.options.length; i++) {
+                const option = locationSelect.options[i];
+                customLocations.push({
+                    name: option.textContent,
+                    coordinates: option.value
+                });
+            }
+            
+            // Save to server
+            try {
+                const response = await fetch('/api/locations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: customLocations[customLocations.length - 1]?.name,
+                        coordinates: customLocations[customLocations.length - 1]?.coordinates
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Location saved to server');
+                } else {
+                    console.error('Failed to save location to server');
+                }
+            } catch (error) {
+                console.error('Error saving to server:', error);
+            }
+        }
+        
+        async function loadCustomLocations() {
+            const locationSelect = document.getElementById('locationSelect');
+            
+            try {
+                const response = await fetch('/api/locations');
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Clear existing custom locations (keep the first default one)
+                    while (locationSelect.options.length > 1) {
+                        locationSelect.remove(1);
+                    }
+                    
+                    // Add saved custom locations from server
+                    result.data.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.coordinates;
+                        option.textContent = location.name;
+                        option.dataset.locationId = location.id;
+                        locationSelect.appendChild(option);
+                    });
+                    
+                    console.log('Loaded custom locations from server:', result.data.length);
+                } else {
+                    console.error('Failed to load locations from server');
+                }
+            } catch (error) {
+                console.error('Error loading custom locations from server:', error);
+            }
+        }
+        
+        async function removeCustomLocation() {
+            const locationSelect = document.getElementById('locationSelect');
+            const selectedIndex = locationSelect.selectedIndex;
+            const selectedOption = locationSelect.options[selectedIndex];
+            
+            // Don't allow removing the default location (index 0)
+            if (selectedIndex > 0) {
+                const locationId = selectedOption.dataset.locationId;
+                
+                if (locationId) {
+                    try {
+                        const response = await fetch(`/api/locations/${locationId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        if (response.ok) {
+                            locationSelect.remove(selectedIndex);
+                            console.log('Removed custom location from server');
+                        } else {
+                            console.error('Failed to remove location from server');
+                            alert('Failed to remove location from server');
+                        }
+                    } catch (error) {
+                        console.error('Error removing location from server:', error);
+                        alert('Error removing location from server');
+                    }
+                } else {
+                    // Fallback: just remove from UI if no server ID
+                    locationSelect.remove(selectedIndex);
+                    console.log('Removed custom location from UI only');
+                }
+            } else {
+                alert('Cannot remove the default location');
+            }
+        }
+        
+        // Geocoding functions
+        let searchTimeout;
+        let currentSuggestions = [];
+        
+        async function searchLocations(event) {
+            const query = event.target.value.trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Hide suggestions if query is too short
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            // Debounce search to avoid too many API calls
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    currentSuggestions = data.results || [];
+                    displaySuggestions(currentSuggestions);
+                    
+                } catch (error) {
+                    console.error('Error searching locations:', error);
+                    hideSuggestions();
+                }
+            }, 300);
+        }
+        
+        function displaySuggestions(suggestions) {
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            suggestionsDiv.innerHTML = '';
+            
+            if (suggestions.length === 0) {
+                suggestionsDiv.innerHTML = '<div style="padding: 10px; color: #666; text-align: center;">No locations found</div>';
+            } else {
+                suggestions.forEach((location, index) => {
+                    const suggestionDiv = document.createElement('div');
+                    suggestionDiv.style.cssText = 'padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
+                    suggestionDiv.innerHTML = `
+                        <div>
+                            <div style="font-weight: 600; color: #2c3e50;">${location.name}</div>
+                            <div style="font-size: 12px; color: #666;">${location.country} ${location.admin1 ? ', ' + location.admin1 : ''}</div>
+                        </div>
+                        <div style="font-size: 11px; color: #999;">${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}</div>
+                    `;
+                    
+                    suggestionDiv.addEventListener('click', () => {
+                        selectLocation(location);
+                    });
+                    
+                    suggestionDiv.addEventListener('mouseenter', () => {
+                        suggestionDiv.style.backgroundColor = '#f8f9fa';
+                    });
+                    
+                    suggestionDiv.addEventListener('mouseleave', () => {
+                        suggestionDiv.style.backgroundColor = 'white';
+                    });
+                    
+                    suggestionsDiv.appendChild(suggestionDiv);
+                });
+            }
+            
+            suggestionsDiv.style.display = 'block';
+        }
+        
+        function selectLocation(location) {
+            // Fill the coordinate input with the selected location's coordinates
+            document.getElementById('newLocationInput').value = `${location.latitude},${location.longitude}`;
+            
+            // Fill the name input with the location name
+            document.getElementById('newLocationName').value = location.name;
+            
+            // Clear the search input
+            document.getElementById('locationSearchInput').value = '';
+            
+            // Hide suggestions
+            hideSuggestions();
+            
+            console.log('Selected location:', location.name, location.latitude, location.longitude);
+        }
+        
+        function hideSuggestions() {
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            suggestionsDiv.style.display = 'none';
+        }
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(event) {
+            const searchInput = document.getElementById('locationSearchInput');
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            
+            if (!searchInput.contains(event.target) && !suggestionsDiv.contains(event.target)) {
+                hideSuggestions();
+            }
+        });
+        
+        async function loadSunTimes() {
+            try {
+                const coordinates = document.getElementById('locationSelect').value.split(',');
+                const latitude = parseFloat(coordinates[0]);
+                const longitude = parseFloat(coordinates[1]);
+                
+                const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&daily=sunrise,sunset&timezone=auto&apikey=${API_KEY}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const today = data.daily.time[0];
+                const sunrise = data.daily.sunrise[0];
+                const sunset = data.daily.sunset[0];
+                
+                // Format times based on settings
+                const timeFormat = settings.timeFormat === '24h' ? '24-hour' : '12-hour';
+                const showSeconds = settings.showSeconds;
+                
+                const formatTime = (timeStr) => {
+                    const date = new Date(timeStr);
+                    let options = { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: timeFormat === '12-hour'
+                    };
+                    if (showSeconds) {
+                        options.second = '2-digit';
+                    }
+                    return date.toLocaleTimeString('en-US', options);
+                };
+                
+                document.getElementById('sunriseTime').textContent = formatTime(sunrise);
+                document.getElementById('sunsetTime').textContent = formatTime(sunset);
+                
+                // Calculate day length
+                const sunriseDate = new Date(sunrise);
+                const sunsetDate = new Date(sunset);
+                const dayLengthMs = sunsetDate - sunriseDate;
+                const hours = Math.floor(dayLengthMs / (1000 * 60 * 60));
+                const minutes = Math.floor((dayLengthMs % (1000 * 60 * 60)) / (1000 * 60));
+                document.getElementById('dayLength').textContent = `${hours}h ${minutes}m`;
+                
+            } catch (error) {
+                console.error('Error loading sun times:', error);
+                document.getElementById('sunriseTime').textContent = 'Error';
+                document.getElementById('sunsetTime').textContent = 'Error';
+                document.getElementById('dayLength').textContent = 'Error';
+            }
+        }
+        
+        function applySettings() {
+            // Get unit settings
+            const tempUnit = document.querySelector('input[name="tempUnit"]:checked').value;
+            const precipUnit = document.querySelector('input[name="precipUnit"]:checked').value;
+            const timeFormat = document.querySelector('input[name="timeFormat"]:checked').value;
+            const showSeconds = document.getElementById('showSeconds').checked;
+            
+            // Get selected models
+            const selectedModels = [];
+            const modelCheckboxes = [
+                { id: 'model-icon', model: 'icon_seamless' },
+                { id: 'model-ecmwf', model: 'ecmwf_ifs025' },
+                { id: 'model-gfs', model: 'gfs_graphcast025' },
+                { id: 'model-arpege', model: 'meteofrance_arpege_world' },
+                { id: 'model-arome', model: 'meteofrance_arome_france' },
+                { id: 'model-metno', model: 'metno_seamless' },
+                { id: 'model-gfs-seamless', model: 'gfs_seamless' },
+                { id: 'model-gem-seamless', model: 'gem_seamless' }
+            ];
+            
+            modelCheckboxes.forEach(({ id, model }) => {
+                if (document.getElementById(id).checked) {
+                    selectedModels.push(model);
+                }
+            });
+            
+            // Update settings
+            settings = {
+                tempUnit,
+                precipUnit,
+                timeFormat,
+                showSeconds,
+                selectedModels
+            };
+            
+            console.log('Applied settings:', settings);
+            
+            // Reload data with new settings
+            loadWeatherData();
+            loadSunTimes();
+            
+            alert('Settings applied successfully!');
+        }
+        
+        // Auto-update configuration
+        const GITHUB_REPO = 'rbhun/weather'; // Replace with your actual GitHub repo
+        const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+        const CURRENT_VERSION = '1.0.1'; // Current version of the app
+        const DEFAULT_UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // Check every 24 hours
+
+        // Auto-update state
+        let updateCheckInterval = null;
+        let customTimeInterval = null;
+        let isAutoUpdateEnabled = true;
+        let updateCheckIntervalMs = DEFAULT_UPDATE_CHECK_INTERVAL;
+
+        // Auto-update functions
+        async function checkForUpdates() {
+            try {
+                console.log('Checking for updates...');
+                
+                // Check if we should check for updates (based on last check time)
+                const lastCheck = localStorage.getItem('lastUpdateCheck');
+                const now = Date.now();
+                
+                if (lastCheck && (now - parseInt(lastCheck)) < updateCheckIntervalMs) {
+                    console.log('Update check skipped - too recent');
+                    return;
+                }
+                
+                // Fetch latest release info from GitHub
+                const response = await fetch(GITHUB_API_URL);
+                if (!response.ok) {
+                    console.error('Failed to fetch update info:', response.status);
+                    return;
+                }
+                
+                const releaseData = await response.json();
+                const latestVersion = releaseData.tag_name.replace('v', '');
+                
+                console.log('Current version:', CURRENT_VERSION);
+                console.log('Latest version:', latestVersion);
+                
+                if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+                    console.log('New version available!');
+                    showUpdateNotification(latestVersion, releaseData.html_url);
+                } else {
+                    console.log('No updates available');
+                }
+                
+                // Store the check time
+                localStorage.setItem('lastUpdateCheck', now.toString());
+                
+                // Update status display
+                updateStatusDisplay();
+                
+            } catch (error) {
+                console.error('Error checking for updates:', error);
+            }
+        }
+
+        function compareVersions(version1, version2) {
+            const v1Parts = version1.split('.').map(Number);
+            const v2Parts = version2.split('.').map(Number);
+            
+            for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+                const v1 = v1Parts[i] || 0;
+                const v2 = v2Parts[i] || 0;
+                
+                if (v1 > v2) return 1;
+                if (v1 < v2) return -1;
+            }
+            
+            return 0;
+        }
+
+        function showUpdateNotification(latestVersion, downloadUrl) {
+            // Create update notification element
+            const notification = document.createElement('div');
+            notification.id = 'updateNotification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                max-width: 350px;
+                animation: slideInRight 0.5s ease-out;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+            `;
+            notification.innerHTML = `
+                <div>
+                    <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 600;">🔄 New Version Available!</h3>
+                    <p style="margin: 0 0 15px 0; font-size: 14px; opacity: 0.9;">A new version (${latestVersion}) is available.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="window.open('${downloadUrl}', '_blank')" style="flex: 2; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">Download Update</button>
+                        <button onclick="dismissUpdate()" style="flex: 1; padding: 8px 16px; background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">Dismiss</button>
+                    </div>
+                </div>
+            `;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Auto-dismiss after 30 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 30000);
+        }
+
+        function dismissUpdate() {
+            const notification = document.getElementById('updateNotification');
+            if (notification) {
+                notification.remove();
+            }
+        }
+
+        function checkForUpdatesNow() {
+            console.log('Manual update check requested');
+            checkForUpdates();
+        }
+
+        function loadAutoUpdateSettings() {
+            // Load settings from localStorage
+            isAutoUpdateEnabled = localStorage.getItem('autoUpdateEnabled') !== 'false';
+            updateCheckIntervalMs = parseInt(localStorage.getItem('updateCheckInterval')) || DEFAULT_UPDATE_CHECK_INTERVAL;
+            
+            // Update UI to reflect loaded settings
+            const checkbox = document.getElementById('autoUpdateEnabled');
+            const intervalSelect = document.getElementById('updateInterval');
+            
+            if (checkbox) checkbox.checked = isAutoUpdateEnabled;
+            if (intervalSelect) {
+                intervalSelect.value = updateCheckIntervalMs.toString();
+                if (updateCheckIntervalMs === 0) {
+                    intervalSelect.value = 'custom';
+                    showCustomTimeInput();
+                }
+            }
+        }
+
+        function saveAutoUpdateSettings() {
+            localStorage.setItem('autoUpdateEnabled', isAutoUpdateEnabled.toString());
+            localStorage.setItem('updateCheckInterval', updateCheckIntervalMs.toString());
+        }
+
+        function initializeSettingsUI() {
+            const checkbox = document.getElementById('autoUpdateEnabled');
+            const intervalSelect = document.getElementById('updateInterval');
+            const customTimeInput = document.getElementById('customTime');
+            
+            if (checkbox) {
+                checkbox.addEventListener('change', function() {
+                    isAutoUpdateEnabled = this.checked;
+                    saveAutoUpdateSettings();
+                    
+                    if (isAutoUpdateEnabled) {
+                        startUpdateChecks();
+                    } else {
+                        stopUpdateChecks();
+                    }
+                    
+                    updateStatusDisplay();
+                });
+            }
+            
+            if (intervalSelect) {
+                intervalSelect.addEventListener('change', function() {
+                    const value = this.value;
+                    
+                    if (value === 'custom') {
+                        showCustomTimeInput();
+                        updateCheckIntervalMs = 0; // Custom time mode
+                    } else {
+                        hideCustomTimeInput();
+                        updateCheckIntervalMs = parseInt(value);
+                    }
+                    
+                    saveAutoUpdateSettings();
+                    
+                    if (isAutoUpdateEnabled) {
+                        stopUpdateChecks();
+                        startUpdateChecks();
+                    }
+                    
+                    updateStatusDisplay();
+                });
+            }
+            
+            if (customTimeInput) {
+                customTimeInput.addEventListener('change', function() {
+                    localStorage.setItem('customUpdateTime', this.value);
+                    if (isAutoUpdateEnabled) {
+                        stopUpdateChecks();
+                        startUpdateChecks();
+                    }
+                });
+            }
+        }
+
+        function showCustomTimeInput() {
+            const customTimeDiv = document.querySelector('.custom-time');
+            if (customTimeDiv) {
+                customTimeDiv.style.display = 'flex';
+            }
+        }
+
+        function hideCustomTimeInput() {
+            const customTimeDiv = document.querySelector('.custom-time');
+            if (customTimeDiv) {
+                customTimeDiv.style.display = 'none';
+            }
+        }
+
+        function startUpdateChecks() {
+            stopUpdateChecks(); // Clear any existing intervals
+            
+            if (updateCheckIntervalMs === 0) {
+                // Custom time mode
+                startCustomTimeChecks();
+            } else {
+                // Regular interval mode
+                updateCheckInterval = setInterval(checkForUpdates, updateCheckIntervalMs);
+            }
+        }
+
+        function stopUpdateChecks() {
+            if (updateCheckInterval) {
+                clearInterval(updateCheckInterval);
+                updateCheckInterval = null;
+            }
+            
+            if (customTimeInterval) {
+                clearInterval(customTimeInterval);
+                customTimeInterval = null;
+            }
+        }
+
+        function startCustomTimeChecks() {
+            const customTime = localStorage.getItem('customUpdateTime') || '02:00';
+            const [hours, minutes] = customTime.split(':').map(Number);
+            
+            function checkCustomTime() {
+                const now = new Date();
+                const targetTime = new Date();
+                targetTime.setHours(hours, minutes, 0, 0);
+                
+                // If target time has passed today, schedule for tomorrow
+                if (now > targetTime) {
+                    targetTime.setDate(targetTime.getDate() + 1);
+                }
+                
+                const timeUntilNext = targetTime.getTime() - now.getTime();
+                
+                setTimeout(() => {
+                    checkForUpdates();
+                    startCustomTimeChecks(); // Schedule next check
+                }, timeUntilNext);
+            }
+            
+            checkCustomTime();
+        }
+
+        function updateStatusDisplay() {
+            const lastCheckTime = localStorage.getItem('lastUpdateCheck');
+            const lastUpdateTime = localStorage.getItem('lastUpdateTime');
+            const currentVersionEl = document.getElementById('currentVersion');
+            const lastCheckTimeEl = document.getElementById('lastCheckTime');
+            const lastUpdateTimeEl = document.getElementById('lastUpdateTime');
+            const nextCheckTimeEl = document.getElementById('nextCheckTime');
+            
+            // Update current version
+            if (currentVersionEl) {
+                currentVersionEl.textContent = CURRENT_VERSION;
+            }
+            
+            // Update last check time
+            if (lastCheckTimeEl) {
+                if (lastCheckTime) {
+                    const date = new Date(parseInt(lastCheckTime));
+                    lastCheckTimeEl.textContent = date.toLocaleString();
+                } else {
+                    lastCheckTimeEl.textContent = 'Never';
+                }
+            }
+            
+            // Update last update time
+            if (lastUpdateTimeEl) {
+                if (lastUpdateTime) {
+                    const date = new Date(parseInt(lastUpdateTime));
+                    lastUpdateTimeEl.textContent = date.toLocaleString();
+                } else {
+                    lastUpdateTimeEl.textContent = 'Never';
+                }
+            }
+            
+            // Calculate and display next check time
+            if (nextCheckTimeEl) {
+                if (!isAutoUpdateEnabled) {
+                    nextCheckTimeEl.textContent = 'Disabled';
+                } else if (updateCheckIntervalMs === 0) {
+                    // Custom time mode
+                    const customTime = localStorage.getItem('customUpdateTime') || '02:00';
+                    const [hours, minutes] = customTime.split(':').map(Number);
+                    const now = new Date();
+                    const targetTime = new Date();
+                    targetTime.setHours(hours, minutes, 0, 0);
+                    
+                    if (now > targetTime) {
+                        targetTime.setDate(targetTime.getDate() + 1);
+                    }
+                    
+                    nextCheckTimeEl.textContent = targetTime.toLocaleString();
+                } else {
+                    // Regular interval mode
+                    const lastCheck = parseInt(localStorage.getItem('lastUpdateCheck')) || Date.now();
+                    const nextCheck = new Date(lastCheck + updateCheckIntervalMs);
+                    nextCheckTimeEl.textContent = nextCheck.toLocaleString();
+                }
+            }
+        }
+
+        // Initialize auto-update system
+        function initializeAutoUpdate() {
+            // Load settings from localStorage
+            loadAutoUpdateSettings();
+            
+            // Initialize settings UI
+            initializeSettingsUI();
+            
+            // Check for updates on page load if enabled
+            if (isAutoUpdateEnabled) {
+                checkForUpdates();
+            }
+            
+            // Set up periodic update checks if enabled
+            if (isAutoUpdateEnabled) {
+                startUpdateChecks();
+            }
+            
+            // Update status display
+            updateStatusDisplay();
+            
+            console.log('Auto-update system initialized');
+        }
+
+        // Initialize auto-update when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAutoUpdate();
+        });
+    </script>
+</body>
+</html> 
