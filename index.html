@@ -107,9 +107,13 @@
                     <option value="47.4979,19.0402">Origo Studios, Hungary</option>
                 </select>
                 
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="text" id="newLocationInput" placeholder="Add location (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
-                    <input type="text" id="newLocationName" placeholder="Location name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <input type="text" id="locationSearchInput" placeholder="Search location by name..." style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 250px;" onkeyup="searchLocations(event)">
+                        <div id="locationSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <input type="text" id="newLocationInput" placeholder="Or enter coordinates (lat,lon)" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 200px;">
+                    <input type="text" id="newLocationName" placeholder="Custom name" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; width: 150px;">
                     <button onclick="addLocation()" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Add</button>
                     <button onclick="removeCustomLocation()" style="padding: 8px 15px; background: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">Remove</button>
                 </div>
@@ -713,15 +717,22 @@
         function addLocation() {
             const coordinatesInput = document.getElementById('newLocationInput');
             const nameInput = document.getElementById('newLocationName');
+            const searchInput = document.getElementById('locationSearchInput');
             const locationSelect = document.getElementById('locationSelect');
             
-            const coordinates = coordinatesInput.value.trim();
-            const name = nameInput.value.trim();
+            let coordinates = coordinatesInput.value.trim();
+            let name = nameInput.value.trim();
+            
+            // If search input has content but coordinates don't, try to use search
+            if (searchInput.value.trim() && !coordinates) {
+                alert('Please select a location from the search suggestions or enter coordinates manually');
+                return;
+            }
             
             // Validate coordinates format (lat,lon)
             const coordPattern = /^-?\d+\.?\d*,-?\d+\.?\d*$/;
             if (!coordPattern.test(coordinates)) {
-                alert('Please enter coordinates in format: latitude,longitude (e.g., 40.7128,-74.0060)');
+                alert('Please enter coordinates in format: latitude,longitude (e.g., 40.7128,-74.0060) or search for a location by name');
                 return;
             }
             
@@ -742,6 +753,8 @@
             // Clear input fields
             coordinatesInput.value = '';
             nameInput.value = '';
+            searchInput.value = '';
+            hideSuggestions();
             
             // Select the new location and load data
             locationSelect.value = coordinates;
@@ -807,6 +820,112 @@
                 alert('Cannot remove the default location');
             }
         }
+        
+        // Geocoding functions
+        let searchTimeout;
+        let currentSuggestions = [];
+        
+        async function searchLocations(event) {
+            const query = event.target.value.trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Hide suggestions if query is too short
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            // Debounce search to avoid too many API calls
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    currentSuggestions = data.results || [];
+                    displaySuggestions(currentSuggestions);
+                    
+                } catch (error) {
+                    console.error('Error searching locations:', error);
+                    hideSuggestions();
+                }
+            }, 300);
+        }
+        
+        function displaySuggestions(suggestions) {
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            suggestionsDiv.innerHTML = '';
+            
+            if (suggestions.length === 0) {
+                suggestionsDiv.innerHTML = '<div style="padding: 10px; color: #666; text-align: center;">No locations found</div>';
+            } else {
+                suggestions.forEach((location, index) => {
+                    const suggestionDiv = document.createElement('div');
+                    suggestionDiv.style.cssText = 'padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
+                    suggestionDiv.innerHTML = `
+                        <div>
+                            <div style="font-weight: 600; color: #2c3e50;">${location.name}</div>
+                            <div style="font-size: 12px; color: #666;">${location.country} ${location.admin1 ? ', ' + location.admin1 : ''}</div>
+                        </div>
+                        <div style="font-size: 11px; color: #999;">${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}</div>
+                    `;
+                    
+                    suggestionDiv.addEventListener('click', () => {
+                        selectLocation(location);
+                    });
+                    
+                    suggestionDiv.addEventListener('mouseenter', () => {
+                        suggestionDiv.style.backgroundColor = '#f8f9fa';
+                    });
+                    
+                    suggestionDiv.addEventListener('mouseleave', () => {
+                        suggestionDiv.style.backgroundColor = 'white';
+                    });
+                    
+                    suggestionsDiv.appendChild(suggestionDiv);
+                });
+            }
+            
+            suggestionsDiv.style.display = 'block';
+        }
+        
+        function selectLocation(location) {
+            // Fill the coordinate input with the selected location's coordinates
+            document.getElementById('newLocationInput').value = `${location.latitude},${location.longitude}`;
+            
+            // Fill the name input with the location name
+            document.getElementById('newLocationName').value = location.name;
+            
+            // Clear the search input
+            document.getElementById('locationSearchInput').value = '';
+            
+            // Hide suggestions
+            hideSuggestions();
+            
+            console.log('Selected location:', location.name, location.latitude, location.longitude);
+        }
+        
+        function hideSuggestions() {
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            suggestionsDiv.style.display = 'none';
+        }
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(event) {
+            const searchInput = document.getElementById('locationSearchInput');
+            const suggestionsDiv = document.getElementById('locationSuggestions');
+            
+            if (!searchInput.contains(event.target) && !suggestionsDiv.contains(event.target)) {
+                hideSuggestions();
+            }
+        });
         
         async function loadSunTimes() {
             try {
