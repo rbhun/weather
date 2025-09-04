@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Model Comparison Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .model-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid;
+        }
+        .model-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        .temperature {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+        .details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #e74c3c;
+            font-size: 18px;
+        }
+        .summary {
+            background: #e8f4fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .summary h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Model Comparison Test</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Testing temperature predictions for tomorrow 9AM from different weather models
+        </p>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <label for="locationSelect" style="font-weight: 600; color: #34495e;">Select Location:</label>
+            <select id="locationSelect" style="padding: 8px 15px; border: 2px solid #e0e6ed; border-radius: 6px; font-size: 14px; margin-left: 10px;">
+                <option value="47.4979,19.0402">Origo Studios, Hungary</option>
+                <option value="40.7128,-74.0060">New York, USA</option>
+                <option value="51.5074,-0.1278">London, UK</option>
+                <option value="48.8566,2.3522">Paris, France</option>
+                <option value="35.6762,139.6503">Tokyo, Japan</option>
+            </select>
+            <button onclick="loadModelData()">Load Data</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading weather model data...
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            Error loading weather data. Please try again.
+        </div>
+        
+        <div id="summary" class="summary" style="display: none;">
+            <h3>📊 Model Comparison Summary</h3>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="avgTemp">--</div>
+                    <div class="stat-label">Average Temperature</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="maxTemp">--</div>
+                    <div class="stat-label">Highest Prediction</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="minTemp">--</div>
+                    <div class="stat-label">Lowest Prediction</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="tempRange">--</div>
+                    <div class="stat-label">Temperature Range</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="modelResults" class="model-grid" style="display: none;">
+            <!-- Model cards will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'Xud6pUlHyBw0pmUE';
+        const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
+        
+        // Real weather models available in Open-Meteo API
+        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless'];
+        
+        const MODEL_COLORS = {
+            'icon_seamless': '#FF6B6B',
+            'ecmwf_ifs025': '#4ECDC4',
+            'gfs_graphcast025': '#45B7D1',
+            'meteofrance_arpege_world': '#96CEB4',
+            'meteofrance_arome_france': '#FFEAA7',
+            'metno_seamless': '#DDA0DD'
+        };
+        
+        const MODEL_DESCRIPTIONS = {
+            'icon_seamless': 'ICON Seamless - High-resolution global model',
+            'ecmwf_ifs025': 'ECMWF IFS025 - European Centre for Medium-Range Weather Forecasts',
+            'gfs_graphcast025': 'GFS GraphCast025 - Global Forecast System with AI enhancements',
+            'meteofrance_arpege_world': 'MeteoFrance Arpege - French global weather model',
+            'meteofrance_arome_france': 'MeteoFrance Arome - French high-resolution regional model',
+            'metno_seamless': 'MetNo Seamless - Norwegian Meteorological Institute model'
+        };
+        
+        async function loadModelData() {
+            showLoading();
+            hideError();
+            
+            try {
+                console.log('Loading weather model data...');
+                
+                // Get coordinates from location selector
+                const coordinates = document.getElementById('locationSelect').value.split(',');
+                const latitude = parseFloat(coordinates[0]);
+                const longitude = parseFloat(coordinates[1]);
+                
+                // Fetch real weather data from all models for tomorrow
+                const modelsParam = WEATHER_MODELS.join(',');
+                const response = await fetch(`${BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m&models=${modelsParam}&forecast_days=2&apikey=${API_KEY}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received weather data:', data);
+                
+                // Get tomorrow's data (24-48 hours) for each model
+                const modelPredictions = WEATHER_MODELS.map(model => {
+                    // Get the temperature data for this specific model
+                    const modelTempData = data.hourly[`temperature_2m_${model}`] || data.hourly.temperature_2m;
+                    const tomorrowData = modelTempData.slice(24, 48);
+                    const tomorrowTimes = data.hourly.time.slice(24, 48);
+                    
+                    // Find 9AM temperature (index 9 in the 24-hour slice)
+                    const nineAMIndex = 9;
+                    const nineAMTemp = tomorrowData[nineAMIndex];
+                    
+                    return {
+                        model: model,
+                        temperature: nineAMTemp,
+                        variation: 0, // No variation since we're using real data
+                        color: MODEL_COLORS[model],
+                        description: MODEL_DESCRIPTIONS[model]
+                    };
+                });
+                
+                console.log('Model predictions:', modelPredictions);
+                
+                // Calculate statistics
+                const temperatures = modelPredictions.map(m => m.temperature);
+                const avgTemp = temperatures.reduce((a, b) => a + b, 0) / temperatures.length;
+                const maxTemp = Math.max(...temperatures);
+                const minTemp = Math.min(...temperatures);
+                const tempRange = maxTemp - minTemp;
+                
+                // Update summary
+                document.getElementById('avgTemp').textContent = `${avgTemp.toFixed(1)}°C`;
+                document.getElementById('maxTemp').textContent = `${maxTemp.toFixed(1)}°C`;
+                document.getElementById('minTemp').textContent = `${minTemp.toFixed(1)}°C`;
+                document.getElementById('tempRange').textContent = `${tempRange.toFixed(1)}°C`;
+                
+                // Display model cards
+                displayModelCards(modelPredictions);
+                
+                showResults();
+                
+            } catch (error) {
+                console.error('Error loading weather data:', error);
+                showError();
+            }
+        }
+        
+        function displayModelCards(modelPredictions) {
+            const container = document.getElementById('modelResults');
+            container.innerHTML = '';
+            
+            modelPredictions.forEach(prediction => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.style.borderLeftColor = prediction.color;
+                
+                const tempClass = prediction.temperature > 20 ? 'hot' : prediction.temperature < 10 ? 'cold' : 'mild';
+                const tempEmoji = prediction.temperature > 20 ? '🌡️' : prediction.temperature < 10 ? '❄️' : '🌤️';
+                
+                card.innerHTML = `
+                    <div class="model-name">${prediction.model.replace(/_/g, ' ').toUpperCase()}</div>
+                    <div class="temperature">${tempEmoji} ${prediction.temperature.toFixed(1)}°C</div>
+                    <div class="details">
+                        <strong>Model type:</strong> ${prediction.description}<br>
+                        <strong>Data source:</strong> Real forecast from Open-Meteo API
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('summary').style.display = 'none';
+            document.getElementById('modelResults').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showResults() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('summary').style.display = 'block';
+            document.getElementById('modelResults').style.display = 'grid';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showError() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('summary').style.display = 'none';
+            document.getElementById('modelResults').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModelData();
+        });
+    </script>
+</body>
+</html>
