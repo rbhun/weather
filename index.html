@@ -49,21 +49,6 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             height: 400px;
             overflow: hidden;
-            position: relative;
-        }
-        
-        /* Night-time overlay for charts */
-        .night-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(135, 206, 250, 0.1);
-            pointer-events: none;
-            z-index: 1;
-            border-radius: 10px;
-            display: none;
         }
         .chart-section h2 {
             text-align: center;
@@ -1010,34 +995,65 @@
                 }
             });
             
-            // Add night-time overlays to charts
-            addNightTimeOverlays(processedData.labels);
+            // Add night-time background to charts
+            addNightTimeBackground(charts.temperature, processedData.labels);
+            addNightTimeBackground(charts.precipitation, processedData.labels);
+            addNightTimeBackground(charts.precipitationProb, processedData.labels);
+            addNightTimeBackground(charts.cloudCover, processedData.labels);
         }
         
-        function addNightTimeOverlays(labels) {
-            const chartSections = document.querySelectorAll('.chart-section');
+        function addNightTimeBackground(chart, labels) {
+            if (!chart || !labels) return;
             
-            chartSections.forEach(section => {
-                // Remove existing overlays
-                const existingOverlay = section.querySelector('.night-overlay');
-                if (existingOverlay) {
-                    existingOverlay.remove();
+            // Create custom plugin for night-time background
+            const nightTimePlugin = {
+                id: 'nightTimeBackground',
+                beforeDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    
+                    if (!chartArea) return;
+                    
+                    // Find night-time periods
+                    const nightPeriods = [];
+                    let nightStart = null;
+                    
+                    for (let i = 0; i < labels.length; i++) {
+                        const date = new Date(labels[i]);
+                        const hour = date.getHours();
+                        const isNight = hour >= 21 || hour < 6;
+                        
+                        if (isNight && nightStart === null) {
+                            nightStart = i;
+                        } else if (!isNight && nightStart !== null) {
+                            nightPeriods.push({ start: nightStart, end: i - 1 });
+                            nightStart = null;
+                        }
+                    }
+                    
+                    // Handle case where night extends to end
+                    if (nightStart !== null) {
+                        nightPeriods.push({ start: nightStart, end: labels.length - 1 });
+                    }
+                    
+                    // Draw night-time backgrounds
+                    nightPeriods.forEach(period => {
+                        const startX = chart.getDatasetMeta(0).data[period.start]?.x || 0;
+                        const endX = chart.getDatasetMeta(0).data[period.end]?.x || 0;
+                        
+                        if (startX > 0 && endX > 0) {
+                            ctx.save();
+                            ctx.fillStyle = 'rgba(135, 206, 250, 0.1)';
+                            ctx.fillRect(startX, chartArea.top, endX - startX, chartArea.height);
+                            ctx.restore();
+                        }
+                    });
                 }
-                
-                // Create new overlay
-                const overlay = document.createElement('div');
-                overlay.className = 'night-overlay';
-                section.appendChild(overlay);
-                
-                // Check if current time is night
-                const now = new Date();
-                const currentHour = now.getHours();
-                const isCurrentlyNight = currentHour >= 21 || currentHour < 6;
-                
-                if (isCurrentlyNight) {
-                    overlay.style.display = 'block';
-                }
-            });
+            };
+            
+            // Add plugin to chart
+            chart.options.plugins.nightTimeBackground = nightTimePlugin;
+            chart.update();
         }
         
         function showLoading() {
