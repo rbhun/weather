@@ -483,21 +483,9 @@
                 
                 // Generate labels for the first model only
                 if (processedData.labels.length === 0) {
-                    // Create labels array with all hours
                     processedData.labels = hourlyData.time.map((time, index) => {
                         const date = new Date(time);
-                        return time; // Use the original time string for data alignment
-                    });
-                    
-                    // Create display labels array with only 9AM and 9PM
-                    processedData.displayLabels = hourlyData.time.map((time, index) => {
-                        const date = new Date(time);
                         const hour = date.getHours();
-                        
-                        // Only show labels for 9AM and 9PM
-                        if (hour !== 9 && hour !== 21) {
-                            return ''; // Empty string for other hours
-                        }
                         
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                         const dateStr = date.toLocaleDateString('en-US', { 
@@ -551,8 +539,8 @@
                 }));
             };
             
-            // Create chart configuration with display labels
-            const createChartConfig = (displayLabels) => ({
+            // Common chart configuration
+            const chartConfig = {
                 type: 'line',
                 options: {
                     responsive: true,
@@ -576,10 +564,13 @@
                             ticks: {
                                 maxTicksLimit: 14, // Show only 9AM and 9PM labels
                                 callback: function(value, index, values) {
-                                    // Use the display labels array
-                                    const displayLabel = displayLabels[index];
-                                    if (displayLabel && displayLabel.trim() !== '') {
-                                        return displayLabel.split('\n');
+                                    const label = this.getLabelForValue(value);
+                                    const date = new Date(hourlyData.time[index]);
+                                    const hour = date.getHours();
+                                    
+                                    // Only show labels for 9AM and 9PM
+                                    if (hour === 9 || hour === 21) {
+                                        return label.split('\n');
                                     }
                                     return ''; // Hide other labels
                                 }
@@ -599,23 +590,23 @@
                         }
                     }
                 }
-            });
+            };
             
             // Temperature Chart
             const tempCtx = document.getElementById('temperatureChart').getContext('2d');
             const tempUnit = settings.tempUnit === 'fahrenheit' ? '°F' : '°C';
             charts.temperature = new Chart(tempCtx, {
-                ...createChartConfig(processedData.displayLabels),
+                ...chartConfig,
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.temperature)
                 },
                 options: {
-                    ...createChartConfig(processedData.displayLabels).options,
+                    ...chartConfig.options,
                     scales: {
-                        ...createChartConfig(processedData.displayLabels).options.scales,
+                        ...chartConfig.options.scales,
                         y: {
-                            ...createChartConfig(processedData.displayLabels).options.scales.y,
+                            ...chartConfig.options.scales.y,
                             title: {
                                 display: true,
                                 text: `Temperature (${tempUnit})`
@@ -629,17 +620,17 @@
             const precipCtx = document.getElementById('precipitationChart').getContext('2d');
             const precipUnit = settings.precipUnit === 'inches' ? 'in' : 'mm';
             charts.precipitation = new Chart(precipCtx, {
-                ...createChartConfig(processedData.displayLabels),
+                ...chartConfig,
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.precipitation)
                 },
                 options: {
-                    ...createChartConfig(processedData.displayLabels).options,
+                    ...chartConfig.options,
                     scales: {
-                        ...createChartConfig(processedData.displayLabels).options.scales,
+                        ...chartConfig.options.scales,
                         y: {
-                            ...createChartConfig(processedData.displayLabels).options.scales.y,
+                            ...chartConfig.options.scales.y,
                             title: {
                                 display: true,
                                 text: `Precipitation (${precipUnit})`
@@ -652,17 +643,17 @@
             // Precipitation Probability Chart
             const precipProbCtx = document.getElementById('precipitationProbChart').getContext('2d');
             charts.precipitationProb = new Chart(precipProbCtx, {
-                ...createChartConfig(processedData.displayLabels),
+                ...chartConfig,
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.precipitationProb)
                 },
                 options: {
-                    ...createChartConfig(processedData.displayLabels).options,
+                    ...chartConfig.options,
                     scales: {
-                        ...createChartConfig(processedData.displayLabels).options.scales,
+                        ...chartConfig.options.scales,
                         y: {
-                            ...createChartConfig(processedData.displayLabels).options.scales.y,
+                            ...chartConfig.options.scales.y,
                             title: {
                                 display: true,
                                 text: 'Probability (%)'
@@ -677,17 +668,17 @@
             // Cloud Cover Chart
             const cloudCtx = document.getElementById('cloudCoverChart').getContext('2d');
             charts.cloudCover = new Chart(cloudCtx, {
-                ...createChartConfig(processedData.displayLabels),
+                ...chartConfig,
                 data: {
                     labels: processedData.labels,
                     datasets: createDatasets(processedData.cloudCover)
                 },
                 options: {
-                    ...createChartConfig(processedData.displayLabels).options,
+                    ...chartConfig.options,
                     scales: {
-                        ...createChartConfig(processedData.displayLabels).options.scales,
+                        ...chartConfig.options.scales,
                         y: {
-                            ...createChartConfig(processedData.displayLabels).options.scales.y,
+                            ...chartConfig.options.scales.y,
                             title: {
                                 display: true,
                                 text: 'Cloud Cover (%)'
