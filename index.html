@@ -488,7 +488,7 @@
                         
                         // Only show labels for 9AM and 9PM, but keep all data points
                         if (hour !== 9 && hour !== 21) {
-                            return ' '; // Single space for other hours (will be hidden by Chart.js)
+                            return ''; // Empty string for other hours
                         }
                         
                         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -566,16 +566,7 @@
                                 text: 'Date & Time'
                             },
                             ticks: {
-                                maxTicksLimit: 14, // Show only 9AM and 9PM labels
-                                callback: function(value, index, values) {
-                                    const label = this.getLabelForValue(value);
-                                    // Only show labels that are not empty or just spaces (9AM and 9PM)
-                                    if (label && label.trim() !== '' && label.trim() !== ' ') {
-                                        return label.split('\n');
-                                    }
-                                    return ''; // Hide other labels
-                                },
-                                display: true
+                                maxTicksLimit: 14 // Show only 9AM and 9PM labels
                             }
                         },
                         y: {
