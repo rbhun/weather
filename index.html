@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Model Comparison Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -169,15 +168,6 @@
             
             <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);">
                 <h3 style="text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 1.2rem;">Weather Models Legend</h3>
-                
-                <!-- Night Time Indicator -->
-                <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; background: white; border-radius: 8px; border: 2px solid rgba(135, 206, 250, 0.3);">
-                        <div style="width: 20px; height: 20px; background-color: rgba(135, 206, 250, 0.1); border-radius: 4px; border: 1px solid rgba(135, 206, 250, 0.3);"></div>
-                        <span style="font-weight: 600; color: #2c3e50;">🌙 Night Time (9 PM - 6 AM)</span>
-                    </div>
-                </div>
-                
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 8px;">
                         <div style="width: 20px; height: 20px; background-color: #FF6B6B; border-radius: 4px;"></div>
@@ -824,78 +814,71 @@
                 }
             });
             
-                    // Function to determine if a time is during night hours (9 PM - 6 AM)
-        function isNightTime(dateTimeString) {
-            const date = new Date(dateTimeString);
-            const hour = date.getHours();
-            return hour >= 21 || hour < 6; // 9 PM to 6 AM
-        }
-        
-        // Create datasets for each model (only available ones)
-        const createDatasets = (data) => {
-            return WEATHER_MODELS.map(model => {
-                // Check if model has data
-                const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
-                
-                return {
-                    label: model.replace(/_/g, ' ').toUpperCase(),
-                    data: hasData ? data[model] : [],
-                    borderColor: MODEL_COLORS[model],
-                    backgroundColor: MODEL_COLORS[model] + '20',
-                    borderWidth: hasData ? 2 : 1,
-                    fill: false,
-                    tension: 0.4,
-                    hidden: !hasData, // Hide models without data
-                    pointRadius: hasData ? 3 : 0
-                };
-            }).filter(dataset => dataset.data.length > 0); // Only include models with data
-        };
+            // Create datasets for each model (only available ones)
+            const createDatasets = (data) => {
+                return WEATHER_MODELS.map(model => {
+                    // Check if model has data
+                    const hasData = data[model] && data[model].length > 0 && data[model].some(val => val !== null && val !== undefined);
+                    
+                    return {
+                        label: model.replace(/_/g, ' ').toUpperCase(),
+                        data: hasData ? data[model] : [],
+                        borderColor: MODEL_COLORS[model],
+                        backgroundColor: MODEL_COLORS[model] + '20',
+                        borderWidth: hasData ? 2 : 1,
+                        fill: false,
+                        tension: 0.4,
+                        hidden: !hasData, // Hide models without data
+                        pointRadius: hasData ? 3 : 0
+                    };
+                }).filter(dataset => dataset.data.length > 0); // Only include models with data
+            };
             
-                    // Common chart configuration
-        const chartConfig = {
-            type: 'line',
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
-                    }
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Date & Time'
+            // Common chart configuration
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        ticks: {
-                            maxTicksLimit: 8,
-                            callback: function(value, index, values) {
-                                const label = this.getLabelForValue(value);
-                                return label.split('\n');
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date & Time'
+                            },
+                            ticks: {
+                                maxTicksLimit: 8,
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    return label.split('\n');
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
                             }
                         }
                     },
-                    y: {
-                        display: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
                         }
                     }
-                },
-                layout: {
-                    padding: {
-                        top: 10,
-                        bottom: 10
-                    }
                 }
-            }
-        };
+            };
             
             // Temperature Chart
             const tempCtx = document.getElementById('temperatureChart').getContext('2d');
@@ -994,66 +977,6 @@
                     }
                 }
             });
-            
-            // Add night-time background to charts
-            addNightTimeBackground(charts.temperature, processedData.labels);
-            addNightTimeBackground(charts.precipitation, processedData.labels);
-            addNightTimeBackground(charts.precipitationProb, processedData.labels);
-            addNightTimeBackground(charts.cloudCover, processedData.labels);
-        }
-        
-        function addNightTimeBackground(chart, labels) {
-            if (!chart || !labels) return;
-            
-            // Create custom plugin for night-time background
-            const nightTimePlugin = {
-                id: 'nightTimeBackground',
-                beforeDraw: function(chart) {
-                    const ctx = chart.ctx;
-                    const chartArea = chart.chartArea;
-                    
-                    if (!chartArea) return;
-                    
-                    // Find night-time periods
-                    const nightPeriods = [];
-                    let nightStart = null;
-                    
-                    for (let i = 0; i < labels.length; i++) {
-                        const date = new Date(labels[i]);
-                        const hour = date.getHours();
-                        const isNight = hour >= 21 || hour < 6;
-                        
-                        if (isNight && nightStart === null) {
-                            nightStart = i;
-                        } else if (!isNight && nightStart !== null) {
-                            nightPeriods.push({ start: nightStart, end: i - 1 });
-                            nightStart = null;
-                        }
-                    }
-                    
-                    // Handle case where night extends to end
-                    if (nightStart !== null) {
-                        nightPeriods.push({ start: nightStart, end: labels.length - 1 });
-                    }
-                    
-                    // Draw night-time backgrounds
-                    nightPeriods.forEach(period => {
-                        const startX = chart.getDatasetMeta(0).data[period.start]?.x || 0;
-                        const endX = chart.getDatasetMeta(0).data[period.end]?.x || 0;
-                        
-                        if (startX > 0 && endX > 0) {
-                            ctx.save();
-                            ctx.fillStyle = 'rgba(135, 206, 250, 0.1)';
-                            ctx.fillRect(startX, chartArea.top, endX - startX, chartArea.height);
-                            ctx.restore();
-                        }
-                    });
-                }
-            };
-            
-            // Add plugin to chart
-            chart.options.plugins.nightTimeBackground = nightTimePlugin;
-            chart.update();
         }
         
         function showLoading() {
