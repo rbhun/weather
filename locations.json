@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "Origo Studios, Hungary",
+    "coordinates": "47.4979,19.0402",
+    "addedBy": "system",
+    "addedAt": "2025-09-04T14:21:18.617Z"
+  },
+  {
+    "id": 2,
+    "name": "New York City",
+    "coordinates": "40.7128,-74.0060",
+    "addedBy": "::1",
+    "addedAt": "2025-09-04T14:22:12.282Z"
+  }
+]

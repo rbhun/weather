@@ -172,8 +172,8 @@
         const API_KEY = 'Xud6pUlHyBw0pmUE';
         const BASE_URL = 'https://customer-api.open-meteo.com/v1/forecast';
         
-        // Real weather models available in Open-Meteo API (working models only)
-        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world'];
+        // Real weather models available in Open-Meteo API
+        const WEATHER_MODELS = ['icon_seamless', 'ecmwf_ifs025', 'gfs_graphcast025', 'meteofrance_arpege_world', 'meteofrance_arome_france', 'metno_seamless'];
         
         const MODEL_COLORS = {
             'icon_seamless': '#FF6B6B',
@@ -188,7 +188,9 @@
             'icon_seamless': 'ICON Seamless - High-resolution global model',
             'ecmwf_ifs025': 'ECMWF IFS025 - European Centre for Medium-Range Weather Forecasts',
             'gfs_graphcast025': 'GFS GraphCast025 - Global Forecast System with AI enhancements',
-            'meteofrance_arpege_world': 'MeteoFrance Arpege - French global weather model'
+            'meteofrance_arpege_world': 'MeteoFrance Arpege - French global weather model',
+            'meteofrance_arome_france': 'MeteoFrance Arome - French high-resolution regional model',
+            'metno_seamless': 'MetNo Seamless - Norwegian Meteorological Institute model'
         };
         
         async function loadModelData() {
